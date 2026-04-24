@@ -9,6 +9,7 @@ Application de signage pour restaurants et lounge bars :
 - Design : [docs/superpowers/specs/2026-04-24-app-diffusion-design.md](docs/superpowers/specs/2026-04-24-app-diffusion-design.md)
 - Plans : [docs/superpowers/plans/](docs/superpowers/plans/)
 - Démo Phase 1 : [docs/phase1-demo.md](docs/phase1-demo.md)
+- Démo Phase 2 : [docs/phase2-demo.md](docs/phase2-demo.md)
 
 ## Structure
 

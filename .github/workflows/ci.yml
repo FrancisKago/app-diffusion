@@ -40,6 +40,11 @@ jobs:
           cd apps/backoffice
           flutter test
 
+      - name: Test player
+        run: |
+          cd apps/player
+          flutter test
+
   supabase:
     name: Supabase migrations & RLS tests
     runs-on: ubuntu-latest
