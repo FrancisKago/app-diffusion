@@ -7,3 +7,4 @@ environment:
 workspace:
   - packages/shared
   - apps/backoffice
+  - apps/player
