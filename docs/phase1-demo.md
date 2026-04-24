@@ -28,6 +28,10 @@
    - Se connecter avec `jean@local.test` / `Test1234!`
    - Dans Studio (`http://127.0.0.1:54323`), exécuter en SQL `select * from establishments` en tant que `jean@local.test` → doit retourner uniquement "Lounge Plateau" (preuve que RLS fonctionne)
 
+## Limite connue (Phase 1)
+
+Le rôle **gérant** partage la même UI que l'admin : les boutons "Nouvel établissement" et la section "Gérants" sont visibles même pour un gérant. Les actions correspondantes sont **bloquées par les RLS Postgres** (erreur silencieuse côté UI), donc pas de fuite de données — juste une UX non polie. Le filtrage UI par rôle est prévu en **Phase 7**.
+
 ## Résultat attendu
 
 Tous les points ci-dessus marchent, l'UI est navigable, les données persistent après refresh.

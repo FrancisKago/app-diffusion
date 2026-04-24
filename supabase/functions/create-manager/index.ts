@@ -31,18 +31,21 @@ Deno.serve(async (req) => {
   });
   const { data: callerUser, error: userErr } = await caller.auth.getUser();
   if (userErr || !callerUser.user) return json({ error: 'Unauthorized' }, 401);
-  const { data: callerProfile } = await caller
+  const { data: callerProfile, error: profileErr } = await caller
     .from('profiles')
     .select('role')
     .eq('id', callerUser.user.id)
     .single();
-  if (callerProfile?.role !== 'admin') {
+  if (profileErr || !callerProfile || callerProfile.role !== 'admin') {
     return json({ error: 'Admin role required' }, 403);
   }
 
   const payload = (await req.json()) as Payload;
   if (!payload.email || !payload.password || !payload.full_name) {
     return json({ error: 'email, password, full_name required' }, 400);
+  }
+  if (payload.password.length < 8) {
+    return json({ error: 'Password must be at least 8 characters' }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceKey, {
@@ -60,10 +63,16 @@ Deno.serve(async (req) => {
 
   const userId = created.user.id;
 
-  await admin
+  const rollback = async (reason: string, status: number) => {
+    await admin.auth.admin.deleteUser(userId);
+    return json({ error: reason }, status);
+  };
+
+  const { error: updateErr } = await admin
     .from('profiles')
     .update({ full_name: payload.full_name, role: 'manager' })
     .eq('id', userId);
+  if (updateErr) return rollback(updateErr.message, 500);
 
   if (payload.establishment_ids.length > 0) {
     const rows = payload.establishment_ids.map((eid) => ({
@@ -73,7 +82,7 @@ Deno.serve(async (req) => {
     const { error: linkErr } = await admin
       .from('establishment_managers')
       .insert(rows);
-    if (linkErr) return json({ error: linkErr.message }, 500);
+    if (linkErr) return rollback(linkErr.message, 500);
   }
 
   return json({ id: userId }, 200);
