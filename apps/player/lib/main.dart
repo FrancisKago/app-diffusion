@@ -1,18 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(
-    const MaterialApp(
-      title: 'Player Stub',
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Text(
-            'PLAYER (scaffold)',
-            style: TextStyle(color: Colors.white, fontSize: 32),
-          ),
-        ),
-      ),
-    ),
-  );
+import 'package:player/app.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+  runApp(const ProviderScope(child: PlayerApp()));
 }
