@@ -6,4 +6,4 @@ environment:
 
 workspace:
   - packages/shared
-  # - apps/backoffice  # will be added in Task 10
+  - apps/backoffice
