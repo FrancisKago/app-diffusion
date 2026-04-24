@@ -4,23 +4,47 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
-import '../features/home/presentation/home_screen.dart';
+import '../features/establishments/presentation/establishment_form_screen.dart';
+import '../features/establishments/presentation/establishments_list_screen.dart';
+import '../shared_widgets/app_shell.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/establishments',
     redirect: (context, state) {
       final session = ref.read(currentSessionProvider);
       final loggedIn = session != null;
       final onLogin = state.matchedLocation == '/login';
       if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && onLogin) return '/';
+      if (loggedIn && onLogin) return '/establishments';
       return null;
     },
     refreshListenable: _AuthRefreshNotifier(ref),
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+      ShellRoute(
+        builder: (context, state, child) =>
+            AppShell(location: state.matchedLocation, child: child),
+        routes: [
+          GoRoute(
+            path: '/establishments',
+            builder: (_, __) => const EstablishmentsListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, __) => const EstablishmentFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => EstablishmentFormScreen(
+                  establishmentId: s.pathParameters['id'],
+                ),
+              ),
+            ],
+          ),
+          // /managers routes added in Task 16
+        ],
+      ),
     ],
   );
 });
