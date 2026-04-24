@@ -370,6 +370,9 @@ deno_version = 2
 [functions.create-manager]
 verify_jwt = false
 
+[functions.request-pairing-code]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
