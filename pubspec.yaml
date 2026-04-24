@@ -1,0 +1,9 @@
+name: app_diffusion_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - packages/shared
+  # - apps/backoffice  # will be added in Task 10

@@ -1,0 +1,26 @@
+name: shared
+description: Modèles partagés et client Supabase pour app-diffusion.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  supabase_flutter: ^2.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  very_good_analysis: ^6.0.0
+  mocktail: ^1.0.4
