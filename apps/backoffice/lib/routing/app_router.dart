@@ -6,6 +6,8 @@ import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/establishments/presentation/establishment_form_screen.dart';
 import '../features/establishments/presentation/establishments_list_screen.dart';
+import '../features/managers/presentation/manager_form_screen.dart';
+import '../features/managers/presentation/managers_list_screen.dart';
 import '../shared_widgets/app_shell.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -42,7 +44,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // /managers routes added in Task 16
+          GoRoute(
+            path: '/managers',
+            builder: (_, __) => const ManagersListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, __) => const ManagerFormScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
