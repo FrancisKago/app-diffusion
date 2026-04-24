@@ -376,6 +376,9 @@ verify_jwt = false
 [functions.pairing-status]
 verify_jwt = false
 
+[functions.claim-pairing-code]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
