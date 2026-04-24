@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  flutter:
+    name: Flutter analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install deps (workspace)
+        run: flutter pub get
+
+      - name: Generate freezed/json
+        run: |
+          cd packages/shared
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test shared
+        run: |
+          cd packages/shared
+          flutter test
+
+      - name: Test backoffice
+        run: |
+          cd apps/backoffice
+          flutter test
+
+  supabase:
+    name: Supabase migrations & RLS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Run RLS tests
+        run: supabase test db
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
