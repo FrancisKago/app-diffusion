@@ -17,6 +17,7 @@ class Profile with _$Profile {
   const factory Profile({
     required String id,
     @_UserRoleConverter() required UserRole role,
+    // ignore: invalid_annotation_target
     @JsonKey(name: 'full_name') required String fullName,
   }) = _Profile;
 
