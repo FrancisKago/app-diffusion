@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:player/app.dart';
+import 'package:player/providers.dart';
 import 'package:player/services/pairing_service.dart';
 import 'package:player/services/secure_storage.dart';
 

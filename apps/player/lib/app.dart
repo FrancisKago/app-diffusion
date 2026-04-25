@@ -2,27 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:player/features/pairing/presentation/pairing_screen.dart';
-import 'package:player/features/ready/presentation/ready_screen.dart';
-import 'package:player/services/pairing_service.dart';
-import 'package:player/services/secure_storage.dart';
-
-const _kSupabaseUrl = String.fromEnvironment(
-  'SUPABASE_URL',
-  defaultValue: 'http://10.0.2.2:54321',
-);
-const _kAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-
-final secureStorageProvider = Provider<SecureStorageService>((ref) {
-  return SecureStorageService();
-});
-
-final pairingServiceProvider = Provider<PairingService>((ref) {
-  return PairingService(baseUrl: _kSupabaseUrl, anonKey: _kAnonKey);
-});
-
-final credentialsProvider = FutureProvider<DeviceCredentials?>((ref) {
-  return ref.watch(secureStorageProvider).readCredentials();
-});
+import 'package:player/features/player/presentation/player_screen.dart';
+import 'package:player/providers.dart';
 
 class PlayerApp extends ConsumerWidget {
   const PlayerApp({super.key});
@@ -47,13 +28,12 @@ class PlayerApp extends ConsumerWidget {
         error: (e, _) => Scaffold(
           backgroundColor: Colors.black,
           body: Center(
-            child: Text(
-              'Erreur: $e',
-              style: const TextStyle(color: Colors.white),
-            ),
+            child: Text('Erreur: $e',
+                style: const TextStyle(color: Colors.white)),
           ),
         ),
-        data: (c) => c == null ? const PairingScreen() : ReadyScreen(creds: c),
+        data: (c) =>
+            c == null ? const PairingScreen() : PlayerScreen(creds: c,),
       ),
     );
   }
