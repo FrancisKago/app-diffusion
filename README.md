@@ -12,6 +12,7 @@ Application de signage pour restaurants et lounge bars :
 - Démo Phase 2 : [docs/phase2-demo.md](docs/phase2-demo.md)
 - Démo Phase 3 : [docs/phase3-demo.md](docs/phase3-demo.md)
 - Démo Phase 4 : [docs/phase4-demo.md](docs/phase4-demo.md)
+- Démo Phase 5 : [docs/phase5-demo.md](docs/phase5-demo.md)
 
 ## Structure
 
