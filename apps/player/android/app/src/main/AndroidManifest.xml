@@ -38,6 +38,15 @@
             android:exported="false"
             android:stopWithTask="false" />
 
+        <!-- FCM messaging service (Phase 8) -->
+        <service
+            android:name=".FcmService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- BootReceiver custom : relance service + activity au reboot -->
         <receiver
             android:name=".BootReceiver"
