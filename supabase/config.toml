@@ -384,6 +384,15 @@ verify_jwt = false
 [functions.claim-pairing-code]
 verify_jwt = false
 
+[functions.publish-playlist]
+verify_jwt = false
+
+[functions.assign-playlist]
+verify_jwt = false
+
+[functions.revoke-device]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
