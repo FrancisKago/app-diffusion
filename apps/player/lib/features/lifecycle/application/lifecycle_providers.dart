@@ -60,3 +60,8 @@ final markFirstRunBatteryShownProvider =
 
 /// Increment to request an out-of-band sync from the PlayerScreen.
 final forceSyncRequestProvider = StateProvider<int>((ref) => 0);
+
+/// Bumped (incrementing counter) by FcmHandler when the device receives a
+/// `revoked` push from the backend. PlayerScreen listens and switches to
+/// RevokedScreen immediately.
+final fcmRevokedSignalProvider = StateProvider<int>((ref) => 0);
