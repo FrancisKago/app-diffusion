@@ -114,6 +114,9 @@ class _PlaylistEditorScreenState extends ConsumerState<PlaylistEditorScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (context, setState) {
+        final datesInvalid = startsAt != null &&
+            endsAt != null &&
+            !startsAt!.isBefore(endsAt!);
         return AlertDialog(
           title: const Text("Éditer l'élément"),
           content: SizedBox(
@@ -179,6 +182,16 @@ class _PlaylistEditorScreenState extends ConsumerState<PlaylistEditorScreen> {
                     ),
                   ],
                 ),
+                if (datesInvalid) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'La date de fin doit être strictement après la date de début.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -188,7 +201,9 @@ class _PlaylistEditorScreenState extends ConsumerState<PlaylistEditorScreen> {
               child: const Text('Annuler'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: datesInvalid
+                  ? null
+                  : () => Navigator.pop(ctx, true),
               child: const Text('Enregistrer'),
             ),
           ],
