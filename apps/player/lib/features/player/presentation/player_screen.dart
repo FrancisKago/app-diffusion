@@ -274,6 +274,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         unawaited(_runSync());
       }
     });
+    ref.listen<int>(fcmRevokedSignalProvider, (prev, next) {
+      if (prev != null && next != prev && mounted && !_revoked) {
+        setState(() => _revoked = true);
+      }
+    });
     if (_revoked) {
       return const RevokedScreen();
     }
