@@ -13,6 +13,7 @@ class AppShell extends ConsumerWidget {
   static const _destinations = [
     _Dest('/establishments', Icons.store_outlined, 'Établissements'),
     _Dest('/devices', Icons.tv_outlined, 'Appareils'),
+    _Dest('/media', Icons.perm_media_outlined, 'Médias'),
     _Dest('/managers', Icons.people_outline, 'Gérants'),
   ];
 
