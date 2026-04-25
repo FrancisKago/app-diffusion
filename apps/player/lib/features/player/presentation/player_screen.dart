@@ -3,9 +3,13 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:player/data/local/app_database.dart';
 import 'package:player/data/providers.dart';
+import 'package:player/features/lifecycle/application/lifecycle_providers.dart';
+import 'package:player/features/lifecycle/presentation/admin_overlay.dart';
+import 'package:player/features/lifecycle/presentation/first_run_battery_dialog.dart';
 import 'package:player/features/player/presentation/standby_screen.dart';
 import 'package:player/features/revoked/presentation/revoked_screen.dart';
 import 'package:player/services/playback_service.dart';
@@ -42,6 +46,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await ref.read(foregroundServiceProvider).start();
+    });
     _bootstrap();
   }
 
@@ -67,6 +75,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _initialSyncRunning = false;
           _syncError = null;
         });
+        ref.read(lastSyncOkProvider.notifier).state = DateTime.now();
         await _refreshActiveItems();
       }
     } catch (e) {
@@ -254,41 +263,48 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return const RevokedScreen();
     }
     if (_initialSyncRunning) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            const Center(child: CircularProgressIndicator()),
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  'Synchronisation initiale…',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+      return FirstRunBatteryGate(
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              const Center(child: CircularProgressIndicator()),
+              Positioned(
+                bottom: 24,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'Synchronisation initiale…',
+                    style:
+                        TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const AdminOverlay(),
+            ],
+          ),
         ),
       );
     }
 
     if (_currentMedia == null || _activeItems.isEmpty) {
-      return Stack(
-        children: [
-          const StandbyScreen(),
-          if (_syncError != null)
-            Positioned(
-              bottom: 16,
-              left: 16,
-              child: Text(
-                'Sync KO : $_syncError',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+      return FirstRunBatteryGate(
+        child: Stack(
+          children: [
+            const StandbyScreen(),
+            if (_syncError != null)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                child: Text(
+                  'Sync KO : $_syncError',
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                ),
               ),
-            ),
-        ],
+            const AdminOverlay(),
+          ],
+        ),
       );
     }
 
@@ -302,23 +318,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           )
         : Image.file(File(media.localPath!), fit: BoxFit.contain);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(child: Center(child: mediaWidget)),
-          Positioned(
-            bottom: 8,
-            right: 12,
-            child: Text(
-              '${_activeIndex + 1}/${_activeItems.length} · ${media.originalFilename}',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3),
-                fontSize: 10,
+    return WithForegroundTask(
+      child: FirstRunBatteryGate(
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Positioned.fill(child: Center(child: mediaWidget)),
+              Positioned(
+                bottom: 8,
+                right: 12,
+                child: Text(
+                  '${_activeIndex + 1}/${_activeItems.length} · ${media.originalFilename}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    fontSize: 10,
+                  ),
+                ),
               ),
-            ),
+              const AdminOverlay(),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
