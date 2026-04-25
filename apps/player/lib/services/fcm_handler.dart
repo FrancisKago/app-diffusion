@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class FcmHandler {
   Future<void> registerToken(String token);
+  Future<void> registerCurrentToken();
   void onMessage(Map<String, String> data);
 }
 
@@ -15,11 +16,12 @@ class FcmHandlerImpl implements FcmHandler {
   final ProviderContainer ref;
   final SupabaseClient? _client;
 
-  static const _channel = MethodChannel('app.player/fcm');
+  static const _eventsChannel = MethodChannel('app.player/fcm_events');
+  static const _commandsChannel = MethodChannel('app.player/fcm');
 
   /// Wires the MethodChannel handler. Call once at app startup.
   void wireChannel() {
-    _channel.setMethodCallHandler((call) async {
+    _eventsChannel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'onTokenRefresh':
           final token = call.arguments as String?;
@@ -52,6 +54,18 @@ class FcmHandlerImpl implements FcmHandler {
   }
 
   @override
+  Future<void> registerCurrentToken() async {
+    try {
+      final token = await _commandsChannel.invokeMethod<String>('getCurrentToken');
+      if (token != null) {
+        await registerToken(token);
+      }
+    } catch (_) {
+      // Best-effort. Polling 15 min covers if this fails.
+    }
+  }
+
+  @override
   void onMessage(Map<String, String> data) {
     switch (data['type']) {
       case 'playlist_published':
@@ -67,8 +81,16 @@ class FcmHandlerImpl implements FcmHandler {
   }
 }
 
+FcmHandler? _globalFcmHandler;
+
+void setGlobalFcmHandler(FcmHandler handler) {
+  _globalFcmHandler = handler;
+}
+
 final fcmHandlerProvider = Provider<FcmHandler>((ref) {
-  throw UnimplementedError(
-    'fcmHandlerProvider must be overridden at app startup with a real container',
-  );
+  final handler = _globalFcmHandler;
+  if (handler == null) {
+    throw StateError('fcmHandlerProvider read before setGlobalFcmHandler() was called');
+  }
+  return handler;
 });

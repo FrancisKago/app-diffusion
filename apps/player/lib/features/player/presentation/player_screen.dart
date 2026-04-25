@@ -11,6 +11,7 @@ import 'package:player/features/lifecycle/presentation/admin_overlay.dart';
 import 'package:player/features/lifecycle/presentation/first_run_battery_dialog.dart';
 import 'package:player/features/player/presentation/standby_screen.dart';
 import 'package:player/features/revoked/presentation/revoked_screen.dart';
+import 'package:player/services/fcm_handler.dart';
 import 'package:player/services/playback_service.dart';
 import 'package:player/services/secure_storage.dart';
 import 'package:video_player/video_player.dart';
@@ -73,6 +74,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         _runSync();
       }
     });
+    // Register the current FCM token now that we have valid credentials.
+    // This covers the freshly-paired-device case where the SDK had emitted
+    // a token earlier (when creds were null) and registerToken silently dropped it.
+    unawaited(ref.read(fcmHandlerProvider).registerCurrentToken());
   }
 
   Future<void> _runSync({bool initial = false}) async {

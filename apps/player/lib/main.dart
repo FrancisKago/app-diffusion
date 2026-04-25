@@ -30,6 +30,7 @@ Future<void> main() async {
   final container = ProviderContainer();
   final fcmHandler = FcmHandlerImpl(ref: container);
   fcmHandler.wireChannel();
+  setGlobalFcmHandler(fcmHandler);
 
   runApp(
     UncontrolledProviderScope(

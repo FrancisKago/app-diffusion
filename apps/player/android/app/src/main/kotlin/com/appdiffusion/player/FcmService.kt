@@ -9,7 +9,7 @@ class FcmService : FirebaseMessagingService() {
         super.onNewToken(token)
         val engine = FcmEngineHolder.engine
         if (engine != null) {
-            MethodChannel(engine.dartExecutor.binaryMessenger, "app.player/fcm")
+            MethodChannel(engine.dartExecutor.binaryMessenger, "app.player/fcm_events")
                 .invokeMethod("onTokenRefresh", token)
         } else {
             PendingFcmTokenStorage.save(applicationContext, token)
@@ -20,7 +20,7 @@ class FcmService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val engine = FcmEngineHolder.engine ?: return
         val data = HashMap<String, String>(message.data)
-        MethodChannel(engine.dartExecutor.binaryMessenger, "app.player/fcm")
+        MethodChannel(engine.dartExecutor.binaryMessenger, "app.player/fcm_events")
             .invokeMethod("onMessage", data)
     }
 }
