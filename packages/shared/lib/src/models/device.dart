@@ -40,6 +40,7 @@ class Device with _$Device {
     DeviceOrientation orientation,
     @JsonKey(name: 'last_seen_at') DateTime? lastSeenAt,
     @JsonKey(name: 'sync_progress') int? syncProgress,
+    @JsonKey(name: 'current_media_id') String? currentMediaId,
   }) = _Device;
 
   factory Device.fromJson(Map<String, dynamic> json) =>

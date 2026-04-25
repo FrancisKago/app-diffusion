@@ -37,5 +37,25 @@ void main() {
       expect(d.lastSeenAt, isNotNull);
       expect(d.syncProgress, 75);
     });
+
+    test('fromJson parses current_media_id', () {
+      final d = Device.fromJson({
+        'id': 'd1',
+        'establishment_id': 'e1',
+        'name': 'X',
+        'orientation': 'landscape',
+        'current_media_id': 'm-123',
+      });
+      expect(d.currentMediaId, 'm-123');
+    });
+
+    test('fromJson defaults current_media_id to null when missing', () {
+      final d = Device.fromJson({
+        'id': 'd1',
+        'establishment_id': 'e1',
+        'name': 'X',
+      });
+      expect(d.currentMediaId, isNull);
+    });
   });
 }

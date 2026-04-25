@@ -45,4 +45,12 @@ class DevicesRepository {
       throw AppException('Révocation échouée', cause: e.message);
     }
   }
+
+  Future<void> delete(String id) async {
+    try {
+      await _client.from('devices').delete().eq('id', id);
+    } on PostgrestException catch (e) {
+      throw AppException('Suppression échouée', cause: e.message);
+    }
+  }
 }

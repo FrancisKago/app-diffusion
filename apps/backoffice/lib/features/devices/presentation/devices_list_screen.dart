@@ -1,22 +1,52 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
+import '../../establishments/application/establishments_controller.dart';
+import '../../media/application/media_controller.dart';
 import '../../playlists/presentation/assign_playlist_dialog.dart';
 import '../application/devices_controller.dart';
 import 'claim_pairing_dialog.dart';
 
-class DevicesListScreen extends ConsumerWidget {
+class DevicesListScreen extends ConsumerStatefulWidget {
   const DevicesListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DevicesListScreen> createState() => _DevicesListScreenState();
+}
+
+class _DevicesListScreenState extends ConsumerState<DevicesListScreen> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => ref.invalidate(devicesListProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(devicesListProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appareils'),
         actions: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: _LiveBadge(),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(devicesListProvider),
@@ -43,38 +73,16 @@ class DevicesListScreen extends ConsumerWidget {
           if (list.isEmpty) {
             return const Center(child: Text('Aucun appareil.'));
           }
-          return ListView.separated(
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 320,
+              mainAxisExtent: 220,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              final d = list[i];
-              return ListTile(
-                leading: SizedBox(
-                  width: 56,
-                  child: Row(
-                    children: [
-                      _StatusDot(lastSeenAt: d.lastSeenAt),
-                      const SizedBox(width: 8),
-                      Icon(
-                        d.orientation.dbValue == 'portrait'
-                            ? Icons.stay_current_portrait
-                            : Icons.tv_outlined,
-                      ),
-                    ],
-                  ),
-                ),
-                title: Text(d.name),
-                subtitle: Text(_subtitleFor(d)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.queue_music_outlined),
-                  tooltip: 'Assigner une playlist',
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => AssignPlaylistDialog(device: d),
-                  ),
-                ),
-              );
-            },
+            itemBuilder: (_, i) => _DeviceCard(device: list[i]),
           );
         },
       ),
@@ -82,20 +90,273 @@ class DevicesListScreen extends ConsumerWidget {
   }
 }
 
-String _subtitleFor(Device d) {
-  final parts = <String>[
-    d.orientation.dbValue,
-    '${d.id.substring(0, 8)}…',
-  ];
-  if (d.syncProgress != null && d.syncProgress! < 100) {
-    parts.add('sync ${d.syncProgress}%');
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.green.shade400,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'live',
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ],
+    );
   }
-  if (d.lastSeenAt != null) {
-    parts.add(_relSince(d.lastSeenAt!));
-  } else {
-    parts.add('jamais vu');
+}
+
+class _DeviceCard extends ConsumerWidget {
+  const _DeviceCard({required this.device});
+  final Device device;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final establishmentsAsync = ref.watch(establishmentsListProvider);
+    final mediaAsync = ref.watch(mediaListProvider);
+
+    final establishmentName = establishmentsAsync.maybeWhen(
+      data: (list) {
+        for (final e in list) {
+          if (e.id == device.establishmentId) return e.name;
+        }
+        return null;
+      },
+      orElse: () => null,
+    );
+
+    Media? currentMedia;
+    if (device.currentMediaId != null) {
+      currentMedia = mediaAsync.maybeWhen(
+        data: (list) {
+          for (final m in list) {
+            if (m.id == device.currentMediaId) return m;
+          }
+          return null;
+        },
+        orElse: () => null,
+      );
+    }
+
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.go('/devices/${device.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    device.orientation.dbValue == 'portrait'
+                        ? Icons.stay_current_portrait
+                        : Icons.tv_outlined,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.name,
+                      style: theme.textTheme.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _StatusDot(lastSeenAt: device.lastSeenAt),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                establishmentName ?? '—',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                device.lastSeenAt != null
+                    ? _relSince(device.lastSeenAt!)
+                    : 'jamais vu',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              if (device.syncProgress != null && device.syncProgress! < 100)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LinearProgressIndicator(
+                      value: device.syncProgress! / 100,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'sync ${device.syncProgress}%',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              if (currentMedia != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '▶ ${currentMedia.originalFilename}',
+                    style: theme.textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              const Spacer(),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.queue_music_outlined),
+                    tooltip: 'Assigner une playlist',
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => AssignPlaylistDialog(device: device),
+                    ),
+                  ),
+                  const Spacer(),
+                  _DeviceActionsMenu(device: device),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
-  return parts.join(' · ');
+}
+
+class _DeviceActionsMenu extends ConsumerWidget {
+  const _DeviceActionsMenu({required this.device});
+  final Device device;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<String>(
+      tooltip: 'Actions',
+      onSelected: (value) {
+        runDeviceAction(context, ref, device, value);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'details', child: Text('Voir détails')),
+        PopupMenuItem(value: 'revoke', child: Text('Révoquer')),
+        PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+      ],
+    );
+  }
+}
+
+/// Centralised handler for the device action menu, reused by the cards grid
+/// and the detail screen AppBar.
+Future<void> runDeviceAction(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+  String action,
+) async {
+  switch (action) {
+    case 'details':
+      context.go('/devices/${device.id}');
+      return;
+    case 'revoke':
+      await _confirmRevoke(context, ref, device);
+      return;
+    case 'delete':
+      await _confirmDelete(context, ref, device);
+      return;
+  }
+}
+
+Future<void> _confirmRevoke(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Révoquer cet appareil ?'),
+      content: const Text(
+        'Il devra être ré-appairé pour fonctionner à nouveau.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Révoquer'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(devicesRepositoryProvider).revoke(device.id);
+    ref.invalidate(devicesListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
+  }
+}
+
+Future<void> _confirmDelete(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Supprimer cet appareil ?'),
+      content: const Text(
+        'Cette action est irréversible. L\'appareil sera retiré '
+        'définitivement.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Supprimer définitivement'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(devicesRepositoryProvider).delete(device.id);
+    ref.invalidate(devicesListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
+  }
 }
 
 String _relSince(DateTime when) {
@@ -115,8 +376,8 @@ class _StatusDot extends StatelessWidget {
     final isOnline = lastSeenAt != null &&
         DateTime.now().toUtc().difference(lastSeenAt!.toUtc()).inMinutes < 10;
     return Container(
-      width: 10,
-      height: 10,
+      width: 13,
+      height: 13,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isOnline ? Colors.green.shade400 : Colors.grey.shade600,
