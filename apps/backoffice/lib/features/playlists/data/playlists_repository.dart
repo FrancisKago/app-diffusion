@@ -74,15 +74,30 @@ class PlaylistsRepository {
 
   Future<Playlist> publish(String id) async {
     try {
-      final current = await fetch(id);
-      final now = DateTime.now().toUtc().toIso8601String();
-      final row = await _client.from('playlists').update({
-        'version': current.version + 1,
-        'published_at': now,
-      }).eq('id', id).select().single();
-      return Playlist.fromJson(Map<String, dynamic>.from(row));
-    } on PostgrestException catch (e) {
-      throw AppException('Publication échouée', cause: e.message);
+      final response = await _client.functions.invoke(
+        'publish-playlist',
+        body: {'id': id},
+      );
+      if (response.status != 200) {
+        throw AppException(
+          'Publication échouée',
+          cause: 'Edge function returned status ${response.status}',
+        );
+      }
+      final data = response.data as Map<String, dynamic>;
+      if (data['ok'] != true) {
+        throw AppException(
+          'Publication échouée',
+          cause: data['error']?.toString() ?? 'unknown',
+        );
+      }
+      return Playlist.fromJson(
+        Map<String, dynamic>.from(data['playlist'] as Map),
+      );
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Publication échouée', cause: e.toString());
     }
   }
 }
