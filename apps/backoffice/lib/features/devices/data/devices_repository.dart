@@ -38,11 +38,20 @@ class DevicesRepository {
 
   Future<void> revoke(String id) async {
     try {
-      await _client.from('devices').update({
-        'revoked_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', id);
-    } on PostgrestException catch (e) {
-      throw AppException('Révocation échouée', cause: e.message);
+      final response = await _client.functions.invoke(
+        'revoke-device',
+        body: {'deviceId': id},
+      );
+      if (response.status != 200) {
+        throw AppException(
+          'Révocation échouée',
+          cause: 'Edge function returned status ${response.status}',
+        );
+      }
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Révocation échouée', cause: e.toString());
     }
   }
 

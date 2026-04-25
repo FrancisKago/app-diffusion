@@ -23,20 +23,39 @@ class DevicePlaylistsRepository {
     required String playlistId,
   }) async {
     try {
-      await _client.from('device_playlists').upsert({
-        'device_id': deviceId,
-        'playlist_id': playlistId,
-      });
-    } on PostgrestException catch (e) {
-      throw AppException('Assignation échouée', cause: e.message);
+      final response = await _client.functions.invoke(
+        'assign-playlist',
+        body: {'deviceId': deviceId, 'playlistId': playlistId},
+      );
+      if (response.status != 200) {
+        throw AppException(
+          'Assignation échouée',
+          cause: 'Edge function returned status ${response.status}',
+        );
+      }
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Assignation échouée', cause: e.toString());
     }
   }
 
   Future<void> unassign(String deviceId) async {
     try {
-      await _client.from('device_playlists').delete().eq('device_id', deviceId);
-    } on PostgrestException catch (e) {
-      throw AppException('Détachement échoué', cause: e.message);
+      final response = await _client.functions.invoke(
+        'assign-playlist',
+        body: {'deviceId': deviceId, 'playlistId': null},
+      );
+      if (response.status != 200) {
+        throw AppException(
+          'Détachement échoué',
+          cause: 'Edge function returned status ${response.status}',
+        );
+      }
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Détachement échoué', cause: e.toString());
     }
   }
 }
