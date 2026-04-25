@@ -77,6 +77,7 @@ flutter run -d <DEVICE_ID> --release `
 6. **`flutter: uses-material-design: true`** doit être dans les pubspec player + backoffice (déjà commité). Sans ça, Material Icons ne sont pas embarqués → toutes les icônes affichent un rectangle vide.
 7. **`flutter clean`** OBLIGATOIRE après ajout de package avec plugin web natif (ex: file_picker_web), sinon le plugin n'est pas enregistré dans le bundle release.
 8. **Tablette physique = re-pairing nécessaire après `supabase db reset`** : si la table `devices` est wipée mais le JWT est dans le Keystore Android, l'app continue à envoyer des heartbeats sur un device_id qui n'existe plus → tout retourne empty. Solution : `Settings → Apps → Player → Storage → Clear` + nouvel appairage.
+9. **Foreground service `mediaPlayback`** : depuis Phase 9, le manifest déclare le service du plugin `flutter_foreground_task`. Sur Android 14+, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` est requise — déjà ajoutée. Si publication Play Store : justifier l'usage `mediaPlayback` (lecture vidéo en boucle pour signage) dans la fiche.
 
 ## Comptes seed (dev local)
 
@@ -93,7 +94,6 @@ flutter run -d <DEVICE_ID> --release `
 ## Dette explicitement reportée (post-MVP / Phase 8+)
 
 - FCM push instantané (actuellement polling 15 min)
-- Foreground service Android (kiosque-friendly)
 - Resume de téléchargement (gros médias sur connexions instables)
 - Boutons "Supprimer" pour managers/établissements/médias dans l'UI (RLS suffit, mais UX manuelle via SQL)
 - Export CSV des `playback_logs` (preuve de diffusion)
