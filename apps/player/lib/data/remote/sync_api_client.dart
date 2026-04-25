@@ -97,20 +97,45 @@ class SyncApiClient {
     return '$baseUrl/storage/v1$raw';
   }
 
+  /// Sends a heartbeat by calling the `record_heartbeat` Postgres RPC.
+  ///
+  /// The [deviceId] parameter is kept for backward compatibility with existing
+  /// call sites but is now unused — the server identifies the device via the
+  /// JWT (`auth.uid()`).
   Future<void> heartbeat(
     String deviceId, {
     int? syncProgress,
     String? currentMediaId,
+    int? battery,
+    int? storageFreeMb,
+    String? appVersion,
   }) async {
-    final patch = <String, dynamic>{
-      'last_seen_at': DateTime.now().toUtc().toIso8601String(),
-    };
-    if (syncProgress != null) patch['sync_progress'] = syncProgress;
-    if (currentMediaId != null) patch['current_media_id'] = currentMediaId;
-    await _dio.patch<dynamic>(
-      '$baseUrl/rest/v1/devices',
-      queryParameters: {'id': 'eq.$deviceId'},
-      data: jsonEncode(patch),
+    final body = <String, dynamic>{};
+    if (battery != null) body['p_battery'] = battery;
+    if (storageFreeMb != null) body['p_storage_free_mb'] = storageFreeMb;
+    if (appVersion != null) body['p_app_version'] = appVersion;
+    if (syncProgress != null) body['p_sync_progress'] = syncProgress;
+    if (currentMediaId != null) body['p_current_media_id'] = currentMediaId;
+    await _dio.post<dynamic>(
+      '$baseUrl/rest/v1/rpc/record_heartbeat',
+      data: jsonEncode(body),
+      options: Options(
+        headers: {..._headers, 'Content-Type': 'application/json'},
+      ),
+    );
+  }
+
+  /// Records a playback log via the `record_playback` Postgres RPC.
+  Future<void> recordPlayback({
+    required String mediaId,
+    required int durationPlayedSec,
+  }) async {
+    await _dio.post<dynamic>(
+      '$baseUrl/rest/v1/rpc/record_playback',
+      data: jsonEncode({
+        'p_media_id': mediaId,
+        'p_duration_played_sec': durationPlayedSec,
+      }),
       options: Options(
         headers: {..._headers, 'Content-Type': 'application/json'},
       ),

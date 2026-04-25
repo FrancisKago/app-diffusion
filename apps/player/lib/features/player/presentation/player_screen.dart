@@ -82,6 +82,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _sendHeartbeat() async {
+    // 1. Flush pending playback logs first
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final api = ref.read(syncApiClientProvider(widget.creds));
+      final pending = await db.pendingPlaybackLogsAll();
+      for (final p in pending) {
+        try {
+          await api.recordPlayback(
+            mediaId: p.mediaId,
+            durationPlayedSec: p.durationSec,
+          );
+          await db.deletePendingPlaybackLog(p.id);
+        } catch (_) {
+          // Network or RPC error — keep the row, retry next cycle
+          break;
+        }
+      }
+    } catch (_) {
+      // best effort
+    }
+
+    // 2. Send heartbeat (server identifies device via JWT.sub = auth.uid())
     try {
       final api = ref.read(syncApiClientProvider(widget.creds));
       await api.heartbeat(
@@ -182,6 +204,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _onItemEnded() {
     if (!mounted) return;
+    // Capture the just-finished item before advancing
+    final finishedItem = _currentItem;
+    final finishedMedia = _currentMedia;
+    if (finishedItem != null && finishedMedia != null) {
+      final durationSec = finishedMedia.type == 'video'
+          ? (_videoController?.value.duration.inSeconds ??
+              finishedItem.displayDurationSec)
+          : finishedItem.displayDurationSec;
+      // Fire-and-forget — DB insert is fast and we don't want to block playback
+      unawaited(
+        ref.read(appDatabaseProvider).enqueuePlaybackLog(
+              mediaId: finishedMedia.id,
+              durationSec: durationSec,
+            ),
+      );
+    }
     if (_activeItems.isEmpty) return;
     final next = (_activeIndex + 1) % _activeItems.length;
     _playAt(next);

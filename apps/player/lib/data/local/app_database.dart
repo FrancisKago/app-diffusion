@@ -34,6 +34,14 @@ class CachedPlaylistItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class PendingPlaybackLogs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get mediaId => text().named('media_id')();
+  IntColumn get durationSec => integer().named('duration_sec')();
+  IntColumn get capturedAt =>
+      integer().named('captured_at')(); // unix ms
+}
+
 class CachedMedia extends Table {
   TextColumn get id => text()();
   TextColumn get establishmentId => text().named('establishment_id')();
@@ -53,14 +61,33 @@ class CachedMedia extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [CachedPlaylist, CachedPlaylistItems, CachedMedia])
+@DriftDatabase(
+  tables: [
+    CachedPlaylist,
+    CachedPlaylistItems,
+    CachedMedia,
+    PendingPlaybackLogs,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(pendingPlaybackLogs);
+          }
+        },
+      );
 
   // ----- Queries -----
 
@@ -130,6 +157,30 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteMedia(String id) =>
       (delete(cachedMedia)..where((t) => t.id.equals(id))).go();
+
+  // ----- Pending playback logs (offline queue) -----
+
+  Future<int> enqueuePlaybackLog({
+    required String mediaId,
+    required int durationSec,
+  }) {
+    return into(pendingPlaybackLogs).insert(
+      PendingPlaybackLogsCompanion(
+        mediaId: Value(mediaId),
+        durationSec: Value(durationSec),
+        capturedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  Future<List<PendingPlaybackLog>> pendingPlaybackLogsAll() {
+    return (select(pendingPlaybackLogs)
+          ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+        .get();
+  }
+
+  Future<void> deletePendingPlaybackLog(int id) =>
+      (delete(pendingPlaybackLogs)..where((t) => t.id.equals(id))).go();
 }
 
 LazyDatabase _openConnection() {
