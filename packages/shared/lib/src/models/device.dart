@@ -22,8 +22,9 @@ class _OrientationConverter
     implements JsonConverter<DeviceOrientation, String?> {
   const _OrientationConverter();
   @override
-  DeviceOrientation fromJson(String? json) =>
-      json == null ? DeviceOrientation.landscape : DeviceOrientation.fromString(json);
+  DeviceOrientation fromJson(String? json) => json == null
+      ? DeviceOrientation.landscape
+      : DeviceOrientation.fromString(json);
   @override
   String toJson(DeviceOrientation object) => object.dbValue;
 }
@@ -37,6 +38,8 @@ class Device with _$Device {
     @_OrientationConverter()
     @Default(DeviceOrientation.landscape)
     DeviceOrientation orientation,
+    @JsonKey(name: 'last_seen_at') DateTime? lastSeenAt,
+    @JsonKey(name: 'sync_progress') int? syncProgress,
   }) = _Device;
 
   factory Device.fromJson(Map<String, dynamic> json) =>
