@@ -165,6 +165,12 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
 export function createFcmDispatcher(): FcmDispatcher {
   const raw = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
   if (!raw || raw.trim() === '') {
+    console.warn(
+      '[FCM] FIREBASE_SERVICE_ACCOUNT not set — running in LOG_ONLY mode. ' +
+      'Push notifications will NOT be delivered. Set the secret via ' +
+      '`supabase secrets set FIREBASE_SERVICE_ACCOUNT=...` for prod, or ' +
+      'add to supabase/.env.local for local dev.',
+    );
     return new _FcmDispatcher(null);
   }
   try {
