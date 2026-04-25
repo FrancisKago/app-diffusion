@@ -4,6 +4,7 @@ export 'package:supabase_flutter/supabase_flutter.dart'
     show SupabaseClient, AuthException, PostgrestException, User, Session;
 
 export 'src/errors/app_exception.dart';
+export 'src/models/admin_diagnostic.dart';
 export 'src/models/device.dart';
 export 'src/models/establishment.dart';
 export 'src/models/media.dart';
