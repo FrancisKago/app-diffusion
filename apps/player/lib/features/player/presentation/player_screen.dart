@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:player/data/local/app_database.dart';
 import 'package:player/data/providers.dart';
@@ -318,27 +317,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           )
         : Image.file(File(media.localPath!), fit: BoxFit.contain);
 
-    return WithForegroundTask(
-      child: FirstRunBatteryGate(
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              Positioned.fill(child: Center(child: mediaWidget)),
-              Positioned(
-                bottom: 8,
-                right: 12,
-                child: Text(
-                  '${_activeIndex + 1}/${_activeItems.length} · ${media.originalFilename}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    fontSize: 10,
-                  ),
+    return FirstRunBatteryGate(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Positioned.fill(child: Center(child: mediaWidget)),
+            Positioned(
+              bottom: 8,
+              right: 12,
+              child: Text(
+                '${_activeIndex + 1}/${_activeItems.length} · ${media.originalFilename}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 10,
                 ),
               ),
-              const AdminOverlay(),
-            ],
-          ),
+            ),
+            const AdminOverlay(),
+          ],
         ),
       ),
     );

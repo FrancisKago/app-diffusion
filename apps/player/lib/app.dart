@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:player/features/pairing/presentation/pairing_screen.dart';
@@ -32,8 +33,9 @@ class PlayerApp extends ConsumerWidget {
                 style: const TextStyle(color: Colors.white)),
           ),
         ),
-        data: (c) =>
-            c == null ? const PairingScreen() : PlayerScreen(creds: c,),
+        data: (c) => c == null
+            ? const PairingScreen()
+            : WithForegroundTask(child: PlayerScreen(creds: c)),
       ),
     );
   }
