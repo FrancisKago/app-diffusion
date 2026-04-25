@@ -15,11 +15,11 @@ final foregroundServiceProvider = Provider<ForegroundServiceController>((ref) {
 });
 
 final isBatteryOptimExcludedProvider = FutureProvider<bool>((ref) async {
-  return ref.read(batteryOptimCheckerProvider).isExcluded();
+  return ref.watch(batteryOptimCheckerProvider).isExcluded();
 });
 
 final foregroundServiceRunningProvider = FutureProvider<bool>((ref) async {
-  return ref.read(foregroundServiceProvider).isRunning();
+  return ref.watch(foregroundServiceProvider).isRunning();
 });
 
 final lastSyncOkProvider = StateProvider<DateTime?>((ref) => null);
