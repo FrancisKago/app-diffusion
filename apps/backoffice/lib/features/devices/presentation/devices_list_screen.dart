@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../playlists/presentation/assign_playlist_dialog.dart';
 import '../application/devices_controller.dart';
 import 'claim_pairing_dialog.dart';
 
@@ -54,6 +55,14 @@ class DevicesListScreen extends ConsumerWidget {
                 ),
                 title: Text(d.name),
                 subtitle: Text('${d.orientation.dbValue} · ${d.id.substring(0, 8)}…'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.queue_music_outlined),
+                  tooltip: 'Assigner une playlist',
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => AssignPlaylistDialog(device: d),
+                  ),
+                ),
               );
             },
           );
