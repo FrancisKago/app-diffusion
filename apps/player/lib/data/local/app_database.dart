@@ -61,12 +61,21 @@ class CachedMedia extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class LocalSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 @DriftDatabase(
   tables: [
     CachedPlaylist,
     CachedPlaylistItems,
     CachedMedia,
     PendingPlaybackLogs,
+    LocalSettings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -75,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -85,6 +94,9 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.createTable(pendingPlaybackLogs);
+          }
+          if (from < 3) {
+            await m.createTable(localSettings);
           }
         },
       );
@@ -181,6 +193,23 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deletePendingPlaybackLog(int id) =>
       (delete(pendingPlaybackLogs)..where((t) => t.id.equals(id))).go();
+
+  // ----- Local settings (KV) -----
+
+  Future<String?> getSetting(String key) async {
+    final row = await (select(localSettings)
+          ..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> upsertSetting(String key, String value) =>
+      into(localSettings).insertOnConflictUpdate(
+        LocalSettingsCompanion(
+          key: Value(key),
+          value: Value(value),
+        ),
+      );
 }
 
 LazyDatabase _openConnection() {
