@@ -35,3 +35,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Firebase (Phase 8) — secrets & generated config
+apps/player/android/app/google-services.json
+*.serviceaccount.json
+*-firebase-adminsdk-*.json
