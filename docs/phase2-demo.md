@@ -3,8 +3,11 @@
 ## Prérequis
 - Phase 1 setup complet
 - Un émulateur Android démarré (ou une vraie tablette connectée en adb)
-- Supabase local + `supabase functions serve` actifs
-- Back office Flutter Web servi
+- Supabase local + `supabase functions serve --env-file supabase/.env.local` actifs
+  (le fichier doit contenir `JWT_SECRET=super-secret-jwt-token-with-at-least-32-characters-long`)
+- Back office Flutter Web servi (en build release sur 0.0.0.0 si la tablette est physique)
+- **Windows** : `127.0.0.1 localhost` doit être présent (non-commenté) dans `C:\Windows\System32\drivers\etc\hosts` — sans ça, Gradle échoue avec `Unable to establish loopback connection`
+- **Tablette physique** : utiliser l'IP LAN du PC (ex: `http://192.168.1.x:54321`) au lieu de `10.0.2.2`. Vérifier la même WiFi et que le firewall Windows autorise les ports 54321 et 4552
 
 ## Scénario
 
