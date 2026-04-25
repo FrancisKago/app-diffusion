@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/devices/presentation/device_detail_screen.dart';
 import '../features/devices/presentation/device_form_screen.dart';
 import '../features/devices/presentation/devices_list_screen.dart';
 import '../features/establishments/presentation/establishment_form_screen.dart';
@@ -56,6 +57,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 builder: (_, __) => const DeviceFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => DeviceDetailScreen(
+                  deviceId: s.pathParameters['id']!,
+                ),
               ),
             ],
           ),
