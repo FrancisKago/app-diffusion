@@ -25,4 +25,20 @@ class AuthRepository {
   Stream<AuthState> onAuthStateChange() => _client.auth.onAuthStateChange;
 
   Session? get currentSession => _client.auth.currentSession;
+
+  Future<Profile?> fetchCurrentProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final row = await _client
+          .from('profiles')
+          .select('id, role, full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (row == null) return null;
+      return Profile.fromJson(Map<String, dynamic>.from(row));
+    } on PostgrestException catch (e) {
+      throw AppException('Lecture profil échouée', cause: e.message);
+    }
+  }
 }
