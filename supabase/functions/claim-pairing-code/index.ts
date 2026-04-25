@@ -105,6 +105,27 @@ Deno.serve(async (req) => {
     .eq('id', session.id);
   if (updateErr) return json({ error: updateErr.message }, 500);
 
+  // Audit: device paired (best-effort; never block pairing on audit failure)
+  try {
+    const { data: deviceMeta } = await admin
+      .from('devices')
+      .select('name')
+      .eq('id', device.id)
+      .single();
+    await admin.from('audit_events').insert({
+      actor_id: callerUser.user.id,
+      actor_type: 'admin',
+      event_type: 'device_paired',
+      target_id: device.id,
+      metadata: {
+        device_name: deviceMeta?.name ?? null,
+        establishment_id: device.establishment_id,
+      },
+    });
+  } catch (e) {
+    console.error('audit insert failed', e);
+  }
+
   return json({ ok: true }, 200);
 });
 
