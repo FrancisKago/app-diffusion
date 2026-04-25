@@ -57,3 +57,6 @@ final markFirstRunBatteryShownProvider =
     ref.invalidate(firstRunBatteryShownProvider);
   };
 });
+
+/// Increment to request an out-of-band sync from the PlayerScreen.
+final forceSyncRequestProvider = StateProvider<int>((ref) => 0);

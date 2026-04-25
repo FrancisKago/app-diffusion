@@ -38,6 +38,18 @@ class AdminScreen extends ConsumerWidget {
               ),
             const SizedBox(height: 12),
             OutlinedButton(
+              onPressed: () {
+                ref.read(forceSyncRequestProvider.notifier).state++;
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sync demandée')),
+                  );
+                }
+              },
+              child: const Text('Forcer une sync maintenant'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
               onPressed: () async {
                 await ref.read(secureStorageProvider).clear();
                 ref.invalidate(credentialsProvider);

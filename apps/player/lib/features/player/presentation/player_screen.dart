@@ -269,6 +269,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(forceSyncRequestProvider, (prev, next) {
+      if (prev != null && next != prev) {
+        unawaited(_runSync());
+      }
+    });
     if (_revoked) {
       return const RevokedScreen();
     }
