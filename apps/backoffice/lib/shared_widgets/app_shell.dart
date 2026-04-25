@@ -14,6 +14,7 @@ class AppShell extends ConsumerWidget {
     _Dest('/establishments', Icons.store_outlined, 'Établissements'),
     _Dest('/devices', Icons.tv_outlined, 'Appareils'),
     _Dest('/media', Icons.perm_media_outlined, 'Médias'),
+    _Dest('/playlists', Icons.queue_music_outlined, 'Playlists'),
     _Dest('/managers', Icons.people_outline, 'Gérants'),
   ];
 

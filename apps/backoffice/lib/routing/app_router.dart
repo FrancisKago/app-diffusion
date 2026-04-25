@@ -11,6 +11,8 @@ import '../features/establishments/presentation/establishments_list_screen.dart'
 import '../features/managers/presentation/manager_form_screen.dart';
 import '../features/managers/presentation/managers_list_screen.dart';
 import '../features/media/presentation/media_library_screen.dart';
+import '../features/playlists/presentation/playlist_editor_screen.dart';
+import '../features/playlists/presentation/playlists_list_screen.dart';
 import '../shared_widgets/app_shell.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -60,6 +62,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/media',
             builder: (_, __) => const MediaLibraryScreen(),
+          ),
+          GoRoute(
+            path: '/playlists',
+            builder: (_, __) => const PlaylistsListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => PlaylistEditorScreen(
+                  playlistId: s.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/managers',
