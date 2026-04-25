@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:player/data/local/app_database.dart';
 import 'package:player/data/providers.dart';
 import 'package:player/features/player/presentation/standby_screen.dart';
+import 'package:player/features/revoked/presentation/revoked_screen.dart';
 import 'package:player/services/playback_service.dart';
 import 'package:player/services/secure_storage.dart';
 import 'package:video_player/video_player.dart';
@@ -32,6 +33,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _activeIndex = 0;
   bool _initialSyncRunning = true;
   String? _syncError;
+  bool _revoked = false;
 
   static const Duration _syncInterval = Duration(minutes: 15);
   static const Duration _heartbeatInterval = Duration(minutes: 5);
@@ -72,13 +74,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         setState(() {
           _initialSyncRunning = false;
           _syncError = e.toString();
+          if (_isRevocationError(e)) _revoked = true;
         });
         // First playback can still happen from cache if we have one
-        if (initial) {
+        if (initial && !_revoked) {
           await _refreshActiveItems();
         }
       }
     }
+  }
+
+  bool _isRevocationError(Object e) {
+    final msg = e.toString();
+    return msg.contains('Device not found or revoked') ||
+        msg.contains('42501');
   }
 
   Future<void> _sendHeartbeat() async {
@@ -110,8 +119,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         widget.creds.deviceId,
         currentMediaId: _currentMedia?.id,
       );
-    } catch (_) {
-      // best effort
+    } catch (e) {
+      if (mounted && _isRevocationError(e)) {
+        setState(() => _revoked = true);
+      }
+      // best effort otherwise
     }
   }
 
@@ -238,6 +250,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_revoked) {
+      return const RevokedScreen();
+    }
     if (_initialSyncRunning) {
       return Scaffold(
         backgroundColor: Colors.black,
