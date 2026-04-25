@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
+import '../../auth/application/current_profile_provider.dart';
 import '../application/establishments_controller.dart';
 
 class EstablishmentFormScreen extends ConsumerStatefulWidget {
@@ -106,11 +107,12 @@ class _EstablishmentFormScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = ref.watch(isAdminProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Modifier' : 'Nouvel établissement'),
         actions: [
-          if (widget.isEditing)
+          if (widget.isEditing && isAdmin)
             IconButton(icon: const Icon(Icons.delete), onPressed: _delete),
         ],
       ),

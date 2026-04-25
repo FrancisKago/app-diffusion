@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
+import '../features/auth/application/current_profile_provider.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({required this.child, required this.location, super.key});
@@ -10,17 +11,18 @@ class AppShell extends ConsumerWidget {
   final Widget child;
   final String location;
 
-  static const _destinations = [
-    _Dest('/establishments', Icons.store_outlined, 'Établissements'),
-    _Dest('/devices', Icons.tv_outlined, 'Appareils'),
-    _Dest('/media', Icons.perm_media_outlined, 'Médias'),
-    _Dest('/playlists', Icons.queue_music_outlined, 'Playlists'),
-    _Dest('/managers', Icons.people_outline, 'Gérants'),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = _destinations.indexWhere(
+    final isAdmin = ref.watch(isAdminProvider);
+    final destinations = <_Dest>[
+      const _Dest('/establishments', Icons.store_outlined, 'Établissements'),
+      const _Dest('/devices', Icons.tv_outlined, 'Appareils'),
+      const _Dest('/media', Icons.perm_media_outlined, 'Médias'),
+      const _Dest('/playlists', Icons.queue_music_outlined, 'Playlists'),
+      if (isAdmin)
+        const _Dest('/managers', Icons.people_outline, 'Gérants'),
+    ];
+    final selected = destinations.indexWhere(
       (d) => location.startsWith(d.path),
     );
     return Scaffold(
@@ -28,10 +30,10 @@ class AppShell extends ConsumerWidget {
         children: [
           NavigationRail(
             selectedIndex: selected < 0 ? 0 : selected,
-            onDestinationSelected: (i) => context.go(_destinations[i].path),
+            onDestinationSelected: (i) => context.go(destinations[i].path),
             labelType: NavigationRailLabelType.all,
             destinations: [
-              for (final d in _destinations)
+              for (final d in destinations)
                 NavigationRailDestination(
                   icon: Icon(d.icon),
                   label: Text(d.label),
@@ -39,12 +41,24 @@ class AppShell extends ConsumerWidget {
             ],
             trailing: Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: 'Se déconnecter',
-                onPressed: () async {
-                  await ref.read(authRepositoryProvider).signOut();
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isAdmin ? 'admin' : 'gérant',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    tooltip: 'Se déconnecter',
+                    onPressed: () async {
+                      await ref.read(authRepositoryProvider).signOut();
+                    },
+                  ),
+                ],
               ),
             ),
           ),

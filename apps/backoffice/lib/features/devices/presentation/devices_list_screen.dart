@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
+import '../../auth/application/current_profile_provider.dart';
 import '../../establishments/application/establishments_controller.dart';
 import '../../media/application/media_controller.dart';
 import '../../playlists/presentation/assign_playlist_dialog.dart';
@@ -39,6 +40,7 @@ class _DevicesListScreenState extends ConsumerState<DevicesListScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(devicesListProvider);
+    final isAdmin = ref.watch(isAdminProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appareils'),
@@ -61,11 +63,13 @@ class _DevicesListScreenState extends ConsumerState<DevicesListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/devices/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvel appareil'),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go('/devices/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Nouvel appareil'),
+            )
+          : null,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erreur : $e')),
@@ -248,15 +252,17 @@ class _DeviceActionsMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider);
     return PopupMenuButton<String>(
       tooltip: 'Actions',
       onSelected: (value) {
         runDeviceAction(context, ref, device, value);
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'details', child: Text('Voir détails')),
-        PopupMenuItem(value: 'revoke', child: Text('Révoquer')),
-        PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'details', child: Text('Voir détails')),
+        const PopupMenuItem(value: 'revoke', child: Text('Révoquer')),
+        if (isAdmin)
+          const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
       ],
     );
   }
