@@ -24,7 +24,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+class _PlayerScreenState extends ConsumerState<PlayerScreen>
+    with WidgetsBindingObserver {
   Timer? _syncTimer;
   Timer? _heartbeatTimer;
   Timer? _imageTimer;
@@ -45,11 +46,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await ref.read(foregroundServiceProvider).start();
     });
     _bootstrap();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(isBatteryOptimExcludedProvider);
+      ref.invalidate(foregroundServiceRunningProvider);
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -252,6 +262,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _imageTimer?.cancel();
     _connSub?.cancel();
     _videoController?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     super.dispose();
   }
