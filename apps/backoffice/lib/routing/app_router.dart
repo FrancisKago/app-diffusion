@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/audit/presentation/audit_log_screen.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/devices/presentation/device_detail_screen.dart';
@@ -91,6 +92,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (_, __) => const ManagerFormScreen(),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/audit',
+            builder: (_, __) => const AuditLogScreen(),
           ),
         ],
       ),

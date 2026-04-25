@@ -21,6 +21,8 @@ class AppShell extends ConsumerWidget {
       const _Dest('/playlists', Icons.queue_music_outlined, 'Playlists'),
       if (isAdmin)
         const _Dest('/managers', Icons.people_outline, 'Gérants'),
+      if (isAdmin)
+        const _Dest('/audit', Icons.history_outlined, 'Audit'),
     ];
     final selected = destinations.indexWhere(
       (d) => location.startsWith(d.path),
