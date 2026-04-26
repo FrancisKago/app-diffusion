@@ -38,9 +38,11 @@ class AuditRepository {
   final SupabaseClient _client;
 
   Future<List<AuditEvent>> list({
-    int limit = 100,
+    int limit = 50,
+    int offset = 0,
     String? eventType,
     DateTime? since,
+    String? search,
   }) async {
     try {
       var query = _client.from('audit_events').select();
@@ -50,12 +52,28 @@ class AuditRepository {
       if (since != null) {
         query = query.gte('created_at', since.toUtc().toIso8601String());
       }
-      final rows = await query.order('created_at', ascending: false).limit(limit);
-      return rows
+      // Note: search is applied client-side after fetch. supabase-flutter's
+      // PostgrestFilterBuilder does not allow casting jsonb to text in
+      // .ilike(), so we filter the page rows in Dart on metadata.toString().
+      // For very large audit_events tables this should move to a server-side
+      // RPC; current dataset volume makes client-side filtering acceptable.
+      final rows = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+      var events = rows
           .map<AuditEvent>(
             (r) => AuditEvent.fromJson(Map<String, dynamic>.from(r as Map)),
           )
           .toList();
+      if (search != null && search.trim().isNotEmpty) {
+        final needle = search.trim().toLowerCase();
+        events = events.where((e) {
+          final meta = e.metadata?.toString().toLowerCase() ?? '';
+          return meta.contains(needle) ||
+              e.eventType.toLowerCase().contains(needle);
+        }).toList();
+      }
+      return events;
     } on PostgrestException catch (e) {
       throw AppException('Lecture audit log échouée', cause: e.message);
     }
