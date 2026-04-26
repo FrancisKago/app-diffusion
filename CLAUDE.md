@@ -95,7 +95,7 @@ flutter run -d <DEVICE_ID> --release `
 ## Dette explicitement reportée (post-MVP / Phase 8+)
 
 - Resume de téléchargement (gros médias sur connexions instables)
-- Boutons "Supprimer" pour managers/établissements/médias dans l'UI (RLS suffit, mais UX manuelle via SQL)
+- Bouton "Supprimer" pour les managers dans l'UI : non implémenté car nécessiterait de supprimer la ligne `auth.users` correspondante, bloqué côté client par les RLS. À traiter via une Edge Function admin dédiée. Établissements + médias : DONE.
 - Export CSV des `playback_logs` (preuve de diffusion)
 - Charts/sparklines des heartbeats
 - Pagination de l'audit log + recherche

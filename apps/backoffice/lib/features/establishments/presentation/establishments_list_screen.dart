@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared/shared.dart';
 
 import '../../auth/application/current_profile_provider.dart';
 import '../application/establishments_controller.dart';
@@ -44,13 +45,68 @@ class EstablishmentsListScreen extends ConsumerWidget {
               return ListTile(
                 title: Text(e.name),
                 subtitle: Text('Fuseau : ${e.timezone}'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isAdmin)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Supprimer',
+                        onPressed: () =>
+                            _confirmDeleteEstablishment(context, ref, e),
+                      ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
                 onTap: () => context.go('/establishments/${e.id}'),
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+Future<void> _confirmDeleteEstablishment(
+  BuildContext context,
+  WidgetRef ref,
+  Establishment establishment,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Supprimer cet établissement ?'),
+      content: Text(
+        'Établissement : "${establishment.name}".\n\n'
+        'Tous les devices, playlists et médias liés seront détruits '
+        '(cascade DB). Cette action est irréversible.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Supprimer'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref
+        .read(establishmentsRepositoryProvider)
+        .delete(establishment.id);
+    ref.invalidate(establishmentsListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
     );
   }
 }

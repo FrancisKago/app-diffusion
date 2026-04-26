@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 
+import '../../auth/application/current_profile_provider.dart';
 import '../application/media_controller.dart';
 import 'media_preview.dart';
 import 'media_upload_dialog.dart';
@@ -74,6 +75,7 @@ class _MediaCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -85,19 +87,41 @@ class _MediaCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: Container(
-                color: Colors.black,
-                child: media.type == MediaType.image
-                    ? _ImageThumb(media: media)
-                    : Stack(
-                        alignment: Alignment.center,
-                        children: const [
-                          Icon(Icons.movie_outlined,
-                              color: Colors.white24, size: 64),
-                          Icon(Icons.play_arrow,
-                              color: Colors.white70, size: 48),
-                        ],
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black,
+                      child: media.type == MediaType.image
+                          ? _ImageThumb(media: media)
+                          : Stack(
+                              alignment: Alignment.center,
+                              children: const [
+                                Icon(Icons.movie_outlined,
+                                    color: Colors.white24, size: 64),
+                                Icon(Icons.play_arrow,
+                                    color: Colors.white70, size: 48),
+                              ],
+                            ),
+                    ),
+                  ),
+                  if (isAdmin)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Material(
+                        color: Colors.black54,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.white, size: 20),
+                          tooltip: 'Supprimer',
+                          onPressed: () =>
+                              _confirmDeleteMedia(context, ref, media),
+                        ),
                       ),
+                    ),
+                ],
               ),
             ),
             Padding(
@@ -126,6 +150,47 @@ class _MediaCard extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<void> _confirmDeleteMedia(
+  BuildContext context,
+  WidgetRef ref,
+  Media media,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Supprimer ce média ?'),
+      content: Text(
+        'Fichier : "${media.originalFilename}".\n\n'
+        'Le fichier sera retiré du stockage et de toutes les playlists '
+        'qui l\'utilisent. Cette action est irréversible.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Supprimer'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(mediaRepositoryProvider).delete(media);
+    ref.invalidate(mediaListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
     );
   }
 }
