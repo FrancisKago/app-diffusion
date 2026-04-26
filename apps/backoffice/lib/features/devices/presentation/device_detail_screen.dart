@@ -9,6 +9,7 @@ import 'package:shared/shared.dart';
 import '../../establishments/application/establishments_controller.dart';
 import '../../media/application/media_controller.dart';
 import '../application/devices_controller.dart';
+import '../application/playback_log_csv_export.dart';
 import '../data/device_detail_repository.dart';
 
 class DeviceDetailScreen extends ConsumerStatefulWidget {
@@ -22,6 +23,7 @@ class DeviceDetailScreen extends ConsumerStatefulWidget {
 
 class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   Timer? _refreshTimer;
+  bool _exporting = false;
 
   @override
   void initState() {
@@ -37,6 +39,39 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _exportCsv() async {
+    setState(() => _exporting = true);
+    try {
+      final repo = ref.read(deviceDetailRepositoryProvider);
+      final logs = await repo.allPlaybackLogsForExport(widget.deviceId);
+      final mediaList = await ref.read(mediaListProvider.future);
+      final mediaNames = <String, String>{
+        for (final m in mediaList) m.id: m.originalFilename,
+      };
+      final csv = const PlaybackLogCsvExport()
+          .serialise(logs, mediaNames: mediaNames);
+      final ts = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .substring(0, 19);
+      const PlaybackLogCsvExport()
+          .download(csv, 'playback_logs_${widget.deviceId}_$ts.csv');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${logs.length} entrée(s) exportée(s)')),
+        );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${e.message} — ${e.cause}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   @override
@@ -132,9 +167,19 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
               ),
               _HeartbeatsList(async: heartbeatsAsync),
               const SizedBox(height: 24),
-              Text(
-                'Lectures récentes',
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Text(
+                    'Lectures récentes',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.download_outlined, size: 16),
+                    label: const Text('Exporter CSV'),
+                    onPressed: _exporting ? null : _exportCsv,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               _PlaybackLogsList(async: logsAsync, mediaAsync: mediaAsync),

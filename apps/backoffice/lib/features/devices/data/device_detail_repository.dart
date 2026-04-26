@@ -101,4 +101,25 @@ class DeviceDetailRepository {
       throw AppException('Lecture playback logs échouée', cause: e.message);
     }
   }
+
+  Future<List<PlaybackLogEntry>> allPlaybackLogsForExport(
+    String deviceId,
+  ) async {
+    try {
+      final rows = await _client
+          .from('playback_logs')
+          .select()
+          .eq('device_id', deviceId)
+          .order('played_at', ascending: false)
+          .limit(10000);
+      return rows
+          .map<PlaybackLogEntry>(
+            (r) =>
+                PlaybackLogEntry.fromJson(Map<String, dynamic>.from(r as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (e) {
+      throw AppException('Export logs échoué', cause: e.message);
+    }
+  }
 }

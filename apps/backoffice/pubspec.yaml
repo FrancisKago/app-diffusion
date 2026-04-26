@@ -15,6 +15,7 @@ dependencies:
   shared:
     path: ../../packages/shared
   crypto: ^3.0.5
+  csv: ^6.0.0
   file_picker: ^8.1.4
   fl_chart: ^0.69.0
   flutter_riverpod: ^2.6.1
