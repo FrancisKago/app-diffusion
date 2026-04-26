@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -120,6 +121,15 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
+              heartbeatsAsync.maybeWhen(
+                data: (list) => list.length >= 2
+                    ? Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _HeartbeatsChart(heartbeats: list),
+                      )
+                    : const SizedBox.shrink(),
+                orElse: () => const SizedBox.shrink(),
+              ),
               _HeartbeatsList(async: heartbeatsAsync),
               const SizedBox(height: 24),
               Text(
@@ -220,6 +230,127 @@ class _StatusSection extends StatelessWidget {
             Expanded(child: Text(value)),
           ],
         ),
+      );
+}
+
+class _HeartbeatsChart extends StatelessWidget {
+  const _HeartbeatsChart({required this.heartbeats});
+  final List<DeviceHeartbeat> heartbeats;
+
+  @override
+  Widget build(BuildContext context) {
+    if (heartbeats.length < 2) {
+      // Not enough data for a meaningful chart
+      return const SizedBox.shrink();
+    }
+
+    // Order chronologically (DB returns DESC, we want ASC for the chart)
+    final ordered = heartbeats.reversed.toList();
+
+    final batterySpots = <FlSpot>[];
+    final storageSpots = <FlSpot>[];
+    for (var i = 0; i < ordered.length; i++) {
+      final hb = ordered[i];
+      if (hb.battery != null) {
+        batterySpots.add(FlSpot(i.toDouble(), hb.battery!.toDouble()));
+      }
+      if (hb.storageFreeMb != null) {
+        // Normalise to GB for nicer scale
+        storageSpots.add(FlSpot(i.toDouble(), hb.storageFreeMb! / 1024.0));
+      }
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tendance ${ordered.length} derniers heartbeats',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 140,
+              child: LineChart(
+                LineChartData(
+                  minY: 0,
+                  maxY: 100,
+                  gridData: const FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 25,
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 32,
+                        interval: 25,
+                        getTitlesWidget: (value, meta) => Text(
+                          value.toInt().toString(),
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    if (batterySpots.isNotEmpty)
+                      LineChartBarData(
+                        spots: batterySpots,
+                        isCurved: true,
+                        color: Colors.green,
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                      ),
+                    if (storageSpots.isNotEmpty)
+                      LineChartBarData(
+                        spots: storageSpots,
+                        isCurved: true,
+                        color: Colors.blue,
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _legendDot(Colors.green),
+                const SizedBox(width: 4),
+                const Text('Batterie %', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 16),
+                _legendDot(Colors.blue),
+                const SizedBox(width: 4),
+                const Text(
+                  'Stockage libre (Go, plafonné à 100)',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color) => Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       );
 }
 
