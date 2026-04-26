@@ -92,14 +92,8 @@ flutter run -d <DEVICE_ID> --release `
 - **Tests** : 25 shared + 4 backoffice + 6 player Dart + 34 pgTAP RLS = **69 total, 100% passing**
 - **18 migrations Postgres** + 4 Edge Functions Deno + 5 RPC SECURITY DEFINER
 
-## Dette explicitement reportée (post-MVP / Phase 8+)
+## Dette explicitement reportée (post-MVP)
 
-- Resume de téléchargement (gros médias sur connexions instables)
-- Bouton "Supprimer" pour les managers dans l'UI : non implémenté car nécessiterait de supprimer la ligne `auth.users` correspondante, bloqué côté client par les RLS. À traiter via une Edge Function admin dédiée. Établissements + médias : DONE.
-- Export CSV des `playback_logs` (preuve de diffusion)
-- Charts/sparklines des heartbeats
-- Pagination de l'audit log + recherche
-- Rotation JWT_SECRET / signing keys
-- pg_cron pour purge supervision (actuellement probabiliste 1%)
-- "Détacher playlist" déplacé dans le menu carte (uniquement dans le dialog actuellement)
-- Realtime Supabase pour devices (actuellement polling 30s)
+- Bouton "Supprimer" pour les managers dans l'UI : non implémenté car nécessiterait de supprimer la ligne `auth.users` correspondante, bloqué côté client par les RLS. À traiter via une Edge Function admin dédiée. Établissements + médias : livrés.
+- Realtime Supabase pour devices (actuellement polling 30s — fonctionne mais perfectible)
+- pg_cron pour purge supervision (actuellement probabiliste 1% — pas de fuite mémoire constatée)
