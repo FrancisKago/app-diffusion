@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 
 import 'local/app_database.dart';
 import 'local/cache_storage.dart';
+import 'media_downloader.dart';
 import 'remote/sync_api_client.dart';
 
 class SyncResult {
@@ -29,13 +30,15 @@ class SyncService {
     required this.storage,
     required this.deviceId,
     Dio? downloadClient,
-  }) : _download = downloadClient ?? Dio();
+    MediaDownloader? downloader,
+  }) : _downloader =
+            downloader ?? MediaDownloader(dio: downloadClient ?? Dio());
 
   final SyncApiClient api;
   final AppDatabase db;
   final CacheStorage storage;
   final String deviceId;
-  final Dio _download;
+  final MediaDownloader _downloader;
 
   /// Performs a full sync. Returns null if the device has no playlist assigned.
   Future<SyncResult?> sync() async {
@@ -119,10 +122,9 @@ class SyncService {
         final localFile = await storage.resolveLocalFile(mediaId, ext);
         final signedUrl = await api.signedUrlForMedia(m['file_path'] as String);
 
-        await _download.download(
-          signedUrl,
-          localFile.path,
-          options: Options(headers: {'Accept': '*/*'}),
+        await _downloader.downloadResumable(
+          url: signedUrl,
+          target: localFile,
         );
 
         // Verify checksum
