@@ -8,6 +8,7 @@ import 'package:shared/shared.dart';
 import '../../auth/application/current_profile_provider.dart';
 import '../../establishments/application/establishments_controller.dart';
 import '../../media/application/media_controller.dart';
+import '../../playlists/application/playlists_controller.dart';
 import '../../playlists/presentation/assign_playlist_dialog.dart';
 import '../application/devices_controller.dart';
 import 'claim_pairing_dialog.dart';
@@ -260,6 +261,9 @@ class _DeviceActionsMenu extends ConsumerWidget {
       },
       itemBuilder: (_) => [
         const PopupMenuItem(value: 'details', child: Text('Voir détails')),
+        if (isAdmin)
+          const PopupMenuItem(
+              value: 'unassign', child: Text('Détacher playlist')),
         const PopupMenuItem(value: 'revoke', child: Text('Révoquer')),
         if (isAdmin)
           const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
@@ -280,12 +284,52 @@ Future<void> runDeviceAction(
     case 'details':
       context.go('/devices/${device.id}');
       return;
+    case 'unassign':
+      await _confirmUnassign(context, ref, device);
+      return;
     case 'revoke':
       await _confirmRevoke(context, ref, device);
       return;
     case 'delete':
       await _confirmDelete(context, ref, device);
       return;
+  }
+}
+
+Future<void> _confirmUnassign(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Détacher la playlist ?'),
+      content: const Text(
+        "L'appareil affichera l'écran d'attente jusqu'à ce qu'une nouvelle "
+        "playlist soit assignée.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Détacher'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(devicePlaylistsRepositoryProvider).unassign(device.id);
+    ref.invalidate(devicesListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
   }
 }
 
