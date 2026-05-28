@@ -41,3 +41,8 @@ Thumbs.db
 apps/player/android/app/google-services.json
 *.serviceaccount.json
 *-firebase-adminsdk-*.json
+
+# Android release signing (kept in CI secrets, never committed)
+key.properties
+*.keystore
+*.jks

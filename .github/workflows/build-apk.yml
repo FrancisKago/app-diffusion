@@ -1,8 +1,9 @@
 name: Build Player APK
 
-# Builds the player release APK on a Linux runner (no Windows Gradle loopback
-# issue), wired to the Supabase Cloud project. Trigger manually from the
-# Actions tab or via `gh workflow run build-apk.yml`.
+# Builds the player release APKs on a Linux runner (no Windows Gradle loopback
+# issue), wired to the Supabase Cloud project and signed with the stable
+# release keystore (so updates install over-the-top without re-pairing).
+# Trigger manually from the Actions tab or via `gh workflow run build-apk.yml`.
 on:
   workflow_dispatch:
 
@@ -34,6 +35,23 @@ jobs:
       - name: Restore google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > apps/player/android/app/google-services.json
 
+      # Restore the stable release keystore + key.properties so every build is
+      # signed with the same certificate (Android allows over-the-top updates).
+      - name: Restore release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > apps/player/android/app/release.keystore
+          {
+            echo "storeFile=release.keystore"
+            echo "storePassword=$KS_PASS"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASS"
+          } > apps/player/android/key.properties
+
       - name: Resolve workspace deps
         run: flutter pub get
 
@@ -44,16 +62,17 @@ jobs:
           (cd packages/shared && dart run build_runner build --delete-conflicting-outputs)
           (cd apps/player && dart run build_runner build --delete-conflicting-outputs)
 
-      - name: Build release APK (cloud config)
+      # Per-ABI APKs (~40 MB each) instead of one 90 MB universal APK.
+      - name: Build release APKs (cloud config, split per ABI)
         working-directory: apps/player
         run: |
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi \
             --dart-define=SUPABASE_URL=https://mnoeteagkcqlrchyudju.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_yHMBAWZGBiGetvahUw0IHA_VECuTL3N
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: player-release-apk
-          path: apps/player/build/app/outputs/flutter-apk/app-release.apk
+          name: player-release-apks
+          path: apps/player/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
