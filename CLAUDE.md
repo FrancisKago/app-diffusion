@@ -96,8 +96,7 @@ Projet Cloud **app-diffusion** (ref `mnoeteagkcqlrchyudju`, org `kzjfvodekvxzpcc
   Gateway REST/Auth/Functions/Storage OK avec supabase_flutter 2.12.4 ; vérifier le realtime devices (`.stream()`) au 1ᵉʳ test. Fallback historique (anon JWT legacy) : `eyJ…sBjESBNkG5AY3qGHTAHlAj54d7K0SDIjrJE2U13pZaQ`.
 - Schéma : 20 migrations poussées (sans seed). Admin réel : `camerooninnovation58@gmail.com` (mdp hors repo). Service role key + mot de passe DB : **jamais commités** — voir gestionnaire de secrets.
 - Le projet local est **lié** (`supabase link`). ⚠️ Un `supabase db push` **sans `--local` pousse en PROD**. Dev local : `supabase start` + dart-defines `192.168.1.X`.
-- **TODO appairage device sur cloud** : `claim-pairing-code` signe le JWT device avec le secret de fonction `JWT_SECRET`, qui doit égaler le JWT secret du projet (Dashboard > Settings > API > JWT Secret). Tant qu'il n'est pas posé, le pairing player échoue. Le poser via :
-  `supabase secrets set JWT_SECRET="<jwt secret du dashboard>" --project-ref mnoeteagkcqlrchyudju`
+- **Appairage device** : ✅ configuré. Le secret de fonction `JWT_SECRET` est posé sur le cloud et égale le JWT secret du projet (vérifié : signe des JWT device HS256 acceptés par la gateway). `claim-pairing-code` utilise le secret en **chaîne brute** (`TextEncoder().encode`), comme la vérification Supabase. ⚠️ Le JWT secret a transité en clair lors du setup — le faire tourner depuis le Dashboard (Settings > API) si besoin (régénère aussi anon/service keys). Pour le reposer : `supabase secrets set JWT_SECRET="<valeur>" --project-ref mnoeteagkcqlrchyudju`.
 
 ## Stats
 
