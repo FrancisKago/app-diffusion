@@ -86,6 +86,18 @@ flutter run -d <DEVICE_ID> --release `
 - Gérant : `manager@local.test` / `ManagerPass123!` (rattaché à "Lounge Plateau")
 - Établissement seed : `Lounge Plateau` (id `11111111-1111-1111-1111-111111111111`)
 
+## Déploiement Supabase Cloud
+
+Projet Cloud **app-diffusion** (ref `mnoeteagkcqlrchyudju`, org `kzjfvodekvxzpccxxtpl`, région eu-west-1, créé le 28 mai 2026).
+- Dashboard : https://supabase.com/dashboard/project/mnoeteagkcqlrchyudju
+- URL API : `https://mnoeteagkcqlrchyudju.supabase.co`
+- Anon key (publique, à passer en `--dart-define=SUPABASE_ANON_KEY` aux builds) :
+  `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ub2V0ZWFna2NxbHJjaHl1ZGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg1OTEsImV4cCI6MjA5NTUyNDU5MX0.sBjESBNkG5AY3qGHTAHlAj54d7K0SDIjrJE2U13pZaQ`
+- Schéma : 20 migrations poussées (sans seed). Admin réel : `camerooninnovation58@gmail.com` (mdp hors repo). Service role key + mot de passe DB : **jamais commités** — voir gestionnaire de secrets.
+- Le projet local est **lié** (`supabase link`). ⚠️ Un `supabase db push` **sans `--local` pousse en PROD**. Dev local : `supabase start` + dart-defines `192.168.1.X`.
+- **TODO appairage device sur cloud** : `claim-pairing-code` signe le JWT device avec le secret de fonction `JWT_SECRET`, qui doit égaler le JWT secret du projet (Dashboard > Settings > API > JWT Secret). Tant qu'il n'est pas posé, le pairing player échoue. Le poser via :
+  `supabase secrets set JWT_SECRET="<jwt secret du dashboard>" --project-ref mnoeteagkcqlrchyudju`
+
 ## Stats
 
 - **99 commits** sur `main` au handoff
