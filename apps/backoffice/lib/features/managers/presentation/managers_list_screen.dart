@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared/shared.dart';
 
+import '../../auth/application/current_profile_provider.dart';
 import '../application/managers_controller.dart';
+import '../data/managers_repository.dart';
 
 class ManagersListScreen extends ConsumerWidget {
   const ManagersListScreen({super.key});
@@ -10,6 +13,7 @@ class ManagersListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(managersListProvider);
+    final isAdmin = ref.watch(isAdminProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gérants'),
@@ -43,11 +47,59 @@ class ManagersListScreen extends ConsumerWidget {
                 subtitle: Text(
                   '${m.establishmentIds.length} établissement(s)',
                 ),
+                trailing: isAdmin
+                    ? IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Supprimer',
+                        onPressed: () => _confirmDeleteManager(context, ref, m),
+                      )
+                    : null,
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+Future<void> _confirmDeleteManager(
+  BuildContext context,
+  WidgetRef ref,
+  ManagerWithEstablishments manager,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Supprimer ce gérant ?'),
+      content: Text(
+        'Gérant : "${manager.profile.fullName}".\n\n'
+        'Son compte de connexion et toutes ses affectations '
+        "d'établissements seront supprimés. Cette action est irréversible.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Supprimer'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(managersRepositoryProvider).delete(manager.profile.id);
+    ref.invalidate(managersListProvider);
+  } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
     );
   }
 }

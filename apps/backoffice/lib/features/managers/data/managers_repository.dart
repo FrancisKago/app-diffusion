@@ -65,4 +65,20 @@ class ManagersRepository {
       throw AppException('Création gérant échouée', cause: e.details);
     }
   }
+
+  Future<void> delete(String managerId) async {
+    try {
+      final response = await _client.functions.invoke(
+        'delete-manager',
+        body: {'managerId': managerId},
+      );
+      if (response.status >= 400) {
+        final data = response.data;
+        final err = (data is Map) ? data['error'] : data;
+        throw AppException('Suppression gérant échouée', cause: err);
+      }
+    } on FunctionException catch (e) {
+      throw AppException('Suppression gérant échouée', cause: e.details);
+    }
+  }
 }
