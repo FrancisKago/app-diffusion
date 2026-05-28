@@ -1,0 +1,3 @@
+# Shell scripts are executed on Linux (Vercel build, CI) — keep LF endings
+# so a Windows checkout never commits CRLF that would break the interpreter.
+*.sh text eol=lf
