@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Build the back-office Flutter web bundle on Vercel.
 #
-# Vercel has no Flutter toolchain, so we fetch the pinned SDK, then build the
-# backoffice package (flutter pub get walks up to resolve the monorepo
-# workspace at the repo root automatically).
+# Vercel has no Flutter toolchain, so we fetch the pinned SDK, run code
+# generation for the shared package (freezed/json), then build the backoffice
+# web bundle (flutter pub get resolves the monorepo workspace automatically).
 #
 # Required Vercel project env vars (Settings > Environment Variables):
 #   SUPABASE_URL        e.g. https://mnoeteagkcqlrchyudju.supabase.co
@@ -31,6 +31,13 @@ flutter config --no-analytics >/dev/null 2>&1 || true
 
 cd apps/backoffice
 flutter pub get
+
+# Generate the shared package's freezed / json_serializable sources. These
+# (*.freezed.dart, *.g.dart) are gitignored, so they are absent on a fresh CI
+# clone; the backoffice imports the shared models and would otherwise fail to
+# compile with "getter isn't defined" errors.
+( cd ../../packages/shared && dart run build_runner build --delete-conflicting-outputs )
+
 flutter build web --release \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
