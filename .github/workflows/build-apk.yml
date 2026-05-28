@@ -1,0 +1,59 @@
+name: Build Player APK
+
+# Builds the player release APK on a Linux runner (no Windows Gradle loopback
+# issue), wired to the Supabase Cloud project. Trigger manually from the
+# Actions tab or via `gh workflow run build-apk.yml`.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter 3.38.9
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.9
+          channel: stable
+          cache: true
+
+      # google-services.json is gitignored; restore it from a repo secret
+      # (base64-encoded) so the Gradle Firebase plugin can build.
+      - name: Restore google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > apps/player/android/app/google-services.json
+
+      - name: Resolve workspace deps
+        run: flutter pub get
+
+      # Generated sources (*.freezed.dart, *.g.dart, Drift app_database.g.dart)
+      # are gitignored, so regenerate them on the fresh clone.
+      - name: Generate code (freezed + drift)
+        run: |
+          (cd packages/shared && dart run build_runner build --delete-conflicting-outputs)
+          (cd apps/player && dart run build_runner build --delete-conflicting-outputs)
+
+      - name: Build release APK (cloud config)
+        working-directory: apps/player
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=https://mnoeteagkcqlrchyudju.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=sb_publishable_yHMBAWZGBiGetvahUw0IHA_VECuTL3N
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: player-release-apk
+          path: apps/player/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
