@@ -98,6 +98,11 @@ Projet Cloud **app-diffusion** (ref `mnoeteagkcqlrchyudju`, org `kzjfvodekvxzpcc
 - Le projet local est **lié** (`supabase link`). ⚠️ Un `supabase db push` **sans `--local` pousse en PROD**. Dev local : `supabase start` + dart-defines `192.168.1.X`.
 - **Appairage device** : ✅ configuré. Le secret de fonction `JWT_SECRET` est posé sur le cloud et égale le JWT secret du projet (vérifié : signe des JWT device HS256 acceptés par la gateway). `claim-pairing-code` utilise le secret en **chaîne brute** (`TextEncoder().encode`), comme la vérification Supabase. ⚠️ Le JWT secret a transité en clair lors du setup — le faire tourner depuis le Dashboard (Settings > API) si besoin (régénère aussi anon/service keys). Pour le reposer : `supabase secrets set JWT_SECRET="<valeur>" --project-ref mnoeteagkcqlrchyudju`.
 
+## Dépôt Git & hébergement web
+
+- **GitHub** (public) : https://github.com/FrancisKago/app-diffusion — remote `origin`, branche `main`. Secrets gitignorés (`.env*`, `google-services.json`) ; clés publiques (anon/publishable) OK dans le repo.
+- **Back office sur Vercel** : `vercel.json` + `scripts/vercel-build.sh` (Vercel ne build pas Flutter nativement → le script récupère le SDK et build le web). Réglages projet Vercel : **Root Directory = racine du repo** (pas `apps/backoffice`), **Framework = Other**, env vars **`SUPABASE_URL`** + **`SUPABASE_ANON_KEY`** (publishable). Output `apps/backoffice/build/web`. Hash routing → pas de rewrite SPA.
+
 ## Stats
 
 - **99 commits** sur `main` au handoff
