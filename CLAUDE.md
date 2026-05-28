@@ -94,6 +94,7 @@ flutter run -d <DEVICE_ID> --release `
 
 ## Dette explicitement reportée (post-MVP)
 
-- Bouton "Supprimer" pour les managers dans l'UI : non implémenté car nécessiterait de supprimer la ligne `auth.users` correspondante, bloqué côté client par les RLS. À traiter via une Edge Function admin dédiée. Établissements + médias : livrés.
-- Realtime Supabase pour devices (actuellement polling 30s — fonctionne mais perfectible)
-- pg_cron pour purge supervision (actuellement probabiliste 1% — pas de fuite mémoire constatée)
+Les trois items historiques sont **livrés** (mai 2026) — aucune dette reportée à ce jour :
+- Suppression gérant → Edge Function `delete-manager` (admin-only, refuse les non-managers, audit `user_deleted`, cascade `auth.users` → `profiles` → `establishment_managers`) + bouton UI gated admin.
+- Realtime devices → `public.devices` dans la publication `supabase_realtime` + `StreamProvider` via `.stream()`. Le polling 30s du back office est retiré.
+- Purge supervision → job pg_cron `purge-supervision-data` quotidien (03:17 UTC). Le `random() < 0.01` est retiré de `record_heartbeat`.
