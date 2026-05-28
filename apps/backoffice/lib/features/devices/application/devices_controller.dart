@@ -10,8 +10,8 @@ final devicesRepositoryProvider = Provider<DevicesRepository>((ref) {
   return DevicesRepository(ref.watch(supabaseClientProvider));
 });
 
-final devicesListProvider = FutureProvider<List<Device>>((ref) {
-  return ref.watch(devicesRepositoryProvider).list();
+final devicesListProvider = StreamProvider<List<Device>>((ref) {
+  return ref.watch(devicesRepositoryProvider).watch();
 });
 
 final pairingRepositoryProvider = Provider<PairingRepository>((ref) {

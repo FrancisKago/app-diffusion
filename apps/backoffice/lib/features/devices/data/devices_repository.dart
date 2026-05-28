@@ -5,18 +5,19 @@ class DevicesRepository {
   DevicesRepository(this._client);
   final SupabaseClient _client;
 
-  Future<List<Device>> list() async {
-    try {
-      final rows = await _client
-          .from('devices')
-          .select()
-          .order('name');
-      return rows.map<Device>(
-        (r) => Device.fromJson(Map<String, dynamic>.from(r as Map)),
-      ).toList();
-    } on PostgrestException catch (e) {
-      throw AppException('Lecture devices échouée', cause: e.message);
-    }
+  /// Realtime stream of the device list, scoped by RLS. Emits a fresh list on
+  /// every insert/update/delete on `public.devices` (heartbeats, sync
+  /// progress, revocation, assignments). Replaces the former 30s polling.
+  Stream<List<Device>> watch() {
+    return _client
+        .from('devices')
+        .stream(primaryKey: ['id'])
+        .order('name')
+        .map(
+          (rows) => rows
+              .map((r) => Device.fromJson(Map<String, dynamic>.from(r)))
+              .toList(),
+        );
   }
 
   Future<Device> create({

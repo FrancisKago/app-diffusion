@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,33 +11,11 @@ import '../../playlists/presentation/assign_playlist_dialog.dart';
 import '../application/devices_controller.dart';
 import 'claim_pairing_dialog.dart';
 
-class DevicesListScreen extends ConsumerStatefulWidget {
+class DevicesListScreen extends ConsumerWidget {
   const DevicesListScreen({super.key});
 
   @override
-  ConsumerState<DevicesListScreen> createState() => _DevicesListScreenState();
-}
-
-class _DevicesListScreenState extends ConsumerState<DevicesListScreen> {
-  Timer? _refreshTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => ref.invalidate(devicesListProvider),
-    );
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(devicesListProvider);
     final isAdmin = ref.watch(isAdminProvider);
     return Scaffold(
