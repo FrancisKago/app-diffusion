@@ -102,6 +102,8 @@ Projet Cloud **app-diffusion** (ref `mnoeteagkcqlrchyudju`, org `kzjfvodekvxzpcc
 
 - **GitHub** (public) : https://github.com/FrancisKago/app-diffusion — remote `origin`, branche `main`. Secrets gitignorés (`.env*`, `google-services.json`) ; clés publiques (anon/publishable) OK dans le repo.
 - **Back office sur Vercel** : `vercel.json` + `scripts/vercel-build.sh` (Vercel ne build pas Flutter nativement → le script récupère le SDK et build le web). Réglages projet Vercel : **Root Directory = racine du repo** (pas `apps/backoffice`), **Framework = Other**, env vars **`SUPABASE_URL`** + **`SUPABASE_ANON_KEY`** (publishable). Output `apps/backoffice/build/web`. Hash routing → pas de rewrite SPA.
+- **APK player via GitHub Actions** : `.github/workflows/build-apk.yml` (Windows ne build pas l'APK → `Unable to establish loopback connection` hors shell admin ; le runner Linux contourne). Build `--split-per-abi`, code généré (freezed/drift) régénéré, dart-defines cloud. `gh workflow run build-apk.yml` puis `gh run download <id> -n player-release-apks -D dist`. Secrets CI : `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64` + `ANDROID_KEYSTORE_PASSWORD` + `ANDROID_KEY_ALIAS` + `ANDROID_KEY_PASSWORD`.
+- **Signature release stable** : `apps/player/android/app/build.gradle.kts` lit `key.properties` (présent en CI, absent en local → fallback debug). Cert `CN=App Diffusion, O=ALH Groupe, C=FR`. ⚠️ Keystore local `dist/release.keystore` (gitignoré) + mot de passe = **identité de signature permanente, à sauvegarder hors repo** (perte = plus de MAJ par-dessus possible). Les builds CI étant tous signés avec cette clé, les MAJ s'installent over-the-top sans ré-appairage.
 
 ## Stats
 
