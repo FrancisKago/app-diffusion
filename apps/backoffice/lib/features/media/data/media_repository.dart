@@ -27,6 +27,49 @@ class MediaUploadInput {
   final int? height;
 }
 
+/// A media plus which playlists reference it. Used to surface obsolete
+/// (unused) media and to explain why a used one cannot be deleted.
+class MediaWithUsage {
+  const MediaWithUsage({
+    required this.media,
+    required this.playlistCount,
+    required this.playlistNames,
+  });
+
+  final Media media;
+
+  /// Number of distinct playlists referencing this media.
+  final int playlistCount;
+
+  /// Distinct, sorted playlist names referencing this media (for display).
+  /// May be shorter than [playlistCount] if a name was not readable under RLS.
+  final List<String> playlistNames;
+
+  int get usageCount => playlistCount;
+  bool get isUnused => playlistCount == 0;
+
+  factory MediaWithUsage.fromRow(Map<String, dynamic> row) {
+    final items = (row['playlist_items'] as List?) ?? const [];
+    final ids = <String>{};
+    final names = <String>{};
+    for (final raw in items) {
+      final item = Map<String, dynamic>.from(raw as Map);
+      final pid = item['playlist_id'];
+      if (pid is String) ids.add(pid);
+      final pl = item['playlists'];
+      if (pl is Map && pl['name'] is String) {
+        names.add(pl['name'] as String);
+      }
+    }
+    final mediaJson = Map<String, dynamic>.from(row)..remove('playlist_items');
+    return MediaWithUsage(
+      media: Media.fromJson(mediaJson),
+      playlistCount: ids.length,
+      playlistNames: names.toList()..sort(),
+    );
+  }
+}
+
 class MediaRepository {
   MediaRepository(this._client, {Uuid? uuid}) : _uuid = uuid ?? const Uuid();
 
@@ -44,6 +87,25 @@ class MediaRepository {
       return rows.map<Media>(
         (r) => Media.fromJson(Map<String, dynamic>.from(r as Map)),
       ).toList();
+    } on PostgrestException catch (e) {
+      throw AppException('Lecture médias échouée', cause: e.message);
+    }
+  }
+
+  /// Lists media with their playlist usage, most recent first. The embedded
+  /// `playlist_items(playlist_id, playlists(name))` join is RLS-scoped, so a
+  /// manager only sees usage within their own establishments.
+  Future<List<MediaWithUsage>> listWithUsage() async {
+    try {
+      final rows = await _client
+          .from('media')
+          .select('*, playlist_items(playlist_id, playlists(name))')
+          .order('created_at', ascending: false);
+      return rows
+          .map<MediaWithUsage>(
+            (r) => MediaWithUsage.fromRow(Map<String, dynamic>.from(r as Map)),
+          )
+          .toList();
     } on PostgrestException catch (e) {
       throw AppException('Lecture médias échouée', cause: e.message);
     }
@@ -95,10 +157,30 @@ class MediaRepository {
       await _client.from('media').delete().eq('id', media.id);
       await _client.storage.from(_bucket).remove([media.filePath]);
     } on PostgrestException catch (e) {
+      // 23503 = foreign_key_violation: the media is still referenced by a
+      // playlist_items row (FK is `on delete restrict`).
+      if (e.code == '23503') {
+        throw AppException(
+          'Média utilisé dans une ou plusieurs playlists',
+          cause: 'Retirez-le des playlists concernées avant de le supprimer.',
+        );
+      }
       throw AppException('Suppression échouée', cause: e.message);
     } on StorageException catch (e) {
       throw AppException('Suppression Storage échouée', cause: e.message);
     }
+  }
+
+  /// Deletes several media (DB rows + storage objects). Intended for purging
+  /// unused media in bulk; a used media raises the same explicit error as
+  /// [delete]. Returns the number successfully deleted.
+  Future<int> deleteMany(List<Media> media) async {
+    var deleted = 0;
+    for (final m in media) {
+      await delete(m);
+      deleted++;
+    }
+    return deleted;
   }
 
   Future<String> signedUrl(Media media, {int expiresInSeconds = 3600}) async {

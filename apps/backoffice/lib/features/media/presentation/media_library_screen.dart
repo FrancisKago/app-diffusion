@@ -4,28 +4,31 @@ import 'package:shared/shared.dart';
 
 import '../../auth/application/current_profile_provider.dart';
 import '../application/media_controller.dart';
+import '../data/media_repository.dart';
 import 'media_preview.dart';
 import 'media_upload_dialog.dart';
+
+String humanSize(int bytes) {
+  if (bytes < 1024) return '$bytes o';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} Ko';
+  return '${(bytes / 1024 / 1024).toStringAsFixed(2)} Mo';
+}
 
 class MediaLibraryScreen extends ConsumerWidget {
   const MediaLibraryScreen({super.key});
 
-  String _humanSize(int bytes) {
-    if (bytes < 1024) return '$bytes o';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} Ko';
-    return '${(bytes / 1024 / 1024).toStringAsFixed(2)} Mo';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(mediaListProvider);
+    final async = ref.watch(mediaWithUsageListProvider);
+    final isAdmin = ref.watch(isAdminProvider);
+    final unusedOnly = ref.watch(mediaUnusedOnlyFilterProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Médias'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(mediaListProvider),
+            onPressed: () => ref.invalidate(mediaWithUsageListProvider),
           ),
         ],
       ),
@@ -40,26 +43,49 @@ class MediaLibraryScreen extends ConsumerWidget {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erreur : $e')),
-        data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('Aucun média.'));
-          }
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 240,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final m = list[i];
-              return _MediaCard(
-                media: m,
-                sizeLabel: _humanSize(m.fileSize),
-              );
-            },
+        data: (all) {
+          final unusedCount = all.where((m) => m.isUnused).length;
+          final list =
+              unusedOnly ? all.where((m) => m.isUnused).toList() : all;
+          return Column(
+            children: [
+              _Toolbar(
+                total: all.length,
+                unusedCount: unusedCount,
+                unusedOnly: unusedOnly,
+                isAdmin: isAdmin,
+                onToggleUnused: (v) => ref
+                    .read(mediaUnusedOnlyFilterProvider.notifier)
+                    .state = v,
+                onPurgeUnused: () => _confirmPurgeUnused(
+                  context,
+                  ref,
+                  all.where((m) => m.isUnused).toList(),
+                ),
+              ),
+              Expanded(
+                child: list.isEmpty
+                    ? Center(
+                        child: Text(
+                          unusedOnly
+                              ? 'Aucun média non utilisé.'
+                              : 'Aucun média.',
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 240,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.72,
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (_, i) => _MediaCard(usage: list[i]),
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -67,14 +93,65 @@ class MediaLibraryScreen extends ConsumerWidget {
   }
 }
 
-class _MediaCard extends ConsumerWidget {
-  const _MediaCard({required this.media, required this.sizeLabel});
+class _Toolbar extends StatelessWidget {
+  const _Toolbar({
+    required this.total,
+    required this.unusedCount,
+    required this.unusedOnly,
+    required this.isAdmin,
+    required this.onToggleUnused,
+    required this.onPurgeUnused,
+  });
 
-  final Media media;
-  final String sizeLabel;
+  final int total;
+  final int unusedCount;
+  final bool unusedOnly;
+  final bool isAdmin;
+  final ValueChanged<bool> onToggleUnused;
+  final VoidCallback onPurgeUnused;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Text(
+            '$total média(s) · $unusedCount non utilisé(s)',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const Spacer(),
+          FilterChip(
+            avatar: const Icon(Icons.filter_alt_outlined, size: 18),
+            label: const Text('Non utilisés'),
+            selected: unusedOnly,
+            onSelected: onToggleUnused,
+          ),
+          if (isAdmin) ...[
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: unusedCount == 0 ? null : onPurgeUnused,
+              icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+              label: Text('Purger les non utilisés ($unusedCount)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MediaCard extends ConsumerWidget {
+  const _MediaCard({required this.usage});
+
+  final MediaWithUsage usage;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final media = usage.media;
     final isAdmin = ref.watch(isAdminProvider);
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -117,7 +194,7 @@ class _MediaCard extends ConsumerWidget {
                               color: Colors.white, size: 20),
                           tooltip: 'Supprimer',
                           onPressed: () =>
-                              _confirmDeleteMedia(context, ref, media),
+                              _confirmDeleteMedia(context, ref, usage),
                         ),
                       ),
                     ),
@@ -140,10 +217,12 @@ class _MediaCard extends ConsumerWidget {
                     children: [
                       _TypeChip(type: media.type),
                       const Spacer(),
-                      Text(sizeLabel,
+                      Text(humanSize(media.fileSize),
                           style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  _UsageChip(usage: usage),
                 ],
               ),
             ),
@@ -154,19 +233,84 @@ class _MediaCard extends ConsumerWidget {
   }
 }
 
+class _UsageChip extends StatelessWidget {
+  const _UsageChip({required this.usage});
+  final MediaWithUsage usage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (usage.isUnused) {
+      return Row(
+        children: [
+          Icon(Icons.link_off, size: 14, color: theme.colorScheme.outline),
+          const SizedBox(width: 4),
+          Text('Non utilisé',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline)),
+        ],
+      );
+    }
+    final label = usage.playlistNames.isNotEmpty
+        ? 'Utilisé : ${usage.playlistNames.join(", ")}'
+        : 'Utilisé dans ${usage.usageCount} playlist(s)';
+    return Row(
+      children: [
+        Icon(Icons.playlist_add_check,
+            size: 14, color: theme.colorScheme.primary),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.primary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 Future<void> _confirmDeleteMedia(
   BuildContext context,
   WidgetRef ref,
-  Media media,
+  MediaWithUsage usage,
 ) async {
+  final media = usage.media;
+  // A used media cannot be deleted (FK restrict). Explain why instead of
+  // failing with a cryptic database error.
+  if (!usage.isUnused) {
+    final where = usage.playlistNames.isNotEmpty
+        ? usage.playlistNames.map((n) => '« $n »').join(', ')
+        : '${usage.usageCount} playlist(s)';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Média utilisé'),
+        content: Text(
+          '"${media.originalFilename}" est utilisé dans : $where.\n\n'
+          'Retirez-le de ces playlists avant de pouvoir le supprimer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Compris'),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('Supprimer ce média ?'),
       content: Text(
         'Fichier : "${media.originalFilename}".\n\n'
-        'Le fichier sera retiré du stockage et de toutes les playlists '
-        'qui l\'utilisent. Cette action est irréversible.',
+        'Le fichier sera retiré du stockage. Cette action est irréversible.',
       ),
       actions: [
         TextButton(
@@ -186,8 +330,61 @@ Future<void> _confirmDeleteMedia(
   if (ok != true) return;
   try {
     await ref.read(mediaRepositoryProvider).delete(media);
+    ref.invalidate(mediaWithUsageListProvider);
     ref.invalidate(mediaListProvider);
   } on AppException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
+  }
+}
+
+Future<void> _confirmPurgeUnused(
+  BuildContext context,
+  WidgetRef ref,
+  List<MediaWithUsage> unused,
+) async {
+  if (unused.isEmpty) return;
+  final totalBytes =
+      unused.fold<int>(0, (sum, u) => sum + u.media.fileSize);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Supprimer ${unused.length} média(s) non utilisé(s) ?'),
+      content: Text(
+        'Tous les médias qui ne sont dans aucune playlist seront supprimés '
+        'du stockage (${humanSize(totalBytes)} libérés). '
+        'Cette action est irréversible.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Tout supprimer'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    final n = await ref
+        .read(mediaRepositoryProvider)
+        .deleteMany(unused.map((u) => u.media).toList());
+    ref.invalidate(mediaWithUsageListProvider);
+    ref.invalidate(mediaListProvider);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$n média(s) supprimé(s).')),
+    );
+  } on AppException catch (e) {
+    ref.invalidate(mediaWithUsageListProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${e.message} — ${e.cause}')),

@@ -100,6 +100,7 @@ class _MediaUploadDialogState extends ConsumerState<MediaUploadDialog> {
           ));
 
       ref.invalidate(mediaListProvider);
+      ref.invalidate(mediaWithUsageListProvider);
       if (mounted) Navigator.of(context).pop();
     } on AppException catch (e) {
       setState(() => _error = '${e.message} — ${e.cause}');
