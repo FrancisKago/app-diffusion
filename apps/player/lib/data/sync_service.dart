@@ -43,7 +43,12 @@ class SyncService {
   /// Performs a full sync. Returns null if the device has no playlist assigned.
   Future<SyncResult?> sync() async {
     final playlistId = await api.getMyDevicePlaylistAssignment(deviceId);
-    if (playlistId == null) return null;
+    if (playlistId == null) {
+      // Unassigned: clear the local cache so the player falls back to
+      // standby instead of looping the previous playlist forever.
+      await db.clearPlaylists();
+      return null;
+    }
 
     final playlistJson = await api.fetchPlaylist(playlistId);
     final itemsJson = await api.fetchPlaylistItems(playlistId);
@@ -66,6 +71,9 @@ class SyncService {
         ),
       ),
     );
+
+    // Drop any previously assigned playlist so at most one remains locally.
+    await db.purgePlaylistsExcept(playlistId);
 
     // Replace items atomically
     final itemCompanions = itemsJson

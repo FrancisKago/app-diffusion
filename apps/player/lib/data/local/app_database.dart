@@ -149,6 +149,27 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Removes every cached playlist (and its items) except [keepId]. A device
+  /// has a single assignment; stale rows made the playlist lookup pick an
+  /// arbitrary playlist after a reassignment.
+  Future<void> purgePlaylistsExcept(String keepId) async {
+    await transaction(() async {
+      await (delete(cachedPlaylistItems)
+            ..where((t) => t.playlistId.isNotValue(keepId)))
+          .go();
+      await (delete(cachedPlaylist)..where((t) => t.id.isNotValue(keepId)))
+          .go();
+    });
+  }
+
+  /// Clears every cached playlist and item (device unassigned → standby).
+  Future<void> clearPlaylists() async {
+    await transaction(() async {
+      await delete(cachedPlaylistItems).go();
+      await delete(cachedPlaylist).go();
+    });
+  }
+
   Future<void> upsertMedia(CachedMediaCompanion data) =>
       into(cachedMedia).insertOnConflictUpdate(data);
 
