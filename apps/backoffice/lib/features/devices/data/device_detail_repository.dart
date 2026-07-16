@@ -36,13 +36,19 @@ class PlaybackLogEntry {
     this.mediaId,
     required this.playedAt,
     required this.durationPlayedSec,
+    this.playCount = 1,
   });
 
   final int id;
   final String deviceId;
   final String? mediaId;
   final DateTime playedAt;
+
+  /// Cumulative seconds played for this (device, media, hour) bucket.
   final int durationPlayedSec;
+
+  /// Number of loops folded into this row (hourly aggregation).
+  final int playCount;
 
   factory PlaybackLogEntry.fromJson(Map<String, dynamic> json) =>
       PlaybackLogEntry(
@@ -51,6 +57,7 @@ class PlaybackLogEntry {
         mediaId: json['media_id'] as String?,
         playedAt: DateTime.parse(json['played_at'] as String),
         durationPlayedSec: json['duration_played_sec'] as int,
+        playCount: json['play_count'] as int? ?? 1,
       );
 }
 

@@ -13,7 +13,13 @@ class PlaybackLogCsvExport {
     Map<String, String>? mediaNames,
   }) {
     final rows = <List<dynamic>>[
-      ['played_at_utc', 'media_id', 'media_name', 'duration_played_sec'],
+      [
+        'played_at_utc',
+        'media_id',
+        'media_name',
+        'duration_played_sec',
+        'play_count',
+      ],
     ];
     for (final log in logs) {
       rows.add([
@@ -21,6 +27,7 @@ class PlaybackLogCsvExport {
         log.mediaId ?? '',
         mediaNames?[log.mediaId] ?? '',
         log.durationPlayedSec,
+        log.playCount,
       ]);
     }
     return const ListToCsvConverter().convert(rows);

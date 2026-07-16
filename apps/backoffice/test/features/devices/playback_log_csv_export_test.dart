@@ -11,6 +11,7 @@ void main() {
         mediaId: 'm1',
         playedAt: DateTime.utc(2026, 4, 25, 12),
         durationPlayedSec: 30,
+        playCount: 3,
       ),
       PlaybackLogEntry(
         id: 2,
@@ -22,9 +23,10 @@ void main() {
     final csv = const PlaybackLogCsvExport()
         .serialise(logs, mediaNames: {'m1': 'demo.mp4'});
     final lines = csv.split('\r\n');
-    expect(lines[0], 'played_at_utc,media_id,media_name,duration_played_sec');
-    expect(lines[1], '2026-04-25T12:00:00.000Z,m1,demo.mp4,30');
-    // For the second entry, mediaId is null → empty fields
-    expect(lines[2], '2026-04-25T13:00:00.000Z,,,10');
+    expect(lines[0],
+        'played_at_utc,media_id,media_name,duration_played_sec,play_count');
+    expect(lines[1], '2026-04-25T12:00:00.000Z,m1,demo.mp4,30,3');
+    // For the second entry, mediaId is null → empty fields, play_count defaults 1
+    expect(lines[2], '2026-04-25T13:00:00.000Z,,,10,1');
   });
 }
