@@ -59,6 +59,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Disable Impeller: on some tablet GPUs Impeller (Flutter's default
+             Android renderer since 3.29) fails to upload image/video textures,
+             rendering them black while text still draws. Falling back to the
+             Skia (GL) backend fixes the black-screen playback. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
