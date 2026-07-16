@@ -154,7 +154,9 @@ class MediaRepository {
 
   Future<void> delete(Media media) async {
     try {
-      await _client.from('media').delete().eq('id', media.id);
+      // Via RPC (statement_timeout disabled) so deleting a heavily-played
+      // media doesn't time out on the playback_logs set-null cascade.
+      await _client.rpc('admin_delete_media', params: {'p_id': media.id});
       await _client.storage.from(_bucket).remove([media.filePath]);
     } on PostgrestException catch (e) {
       // 23503 = foreign_key_violation: the media is still referenced by a
