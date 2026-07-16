@@ -97,6 +97,25 @@ class SyncApiClient {
     return '$baseUrl/storage/v1$raw';
   }
 
+  /// Registers the FCM token on the device's own row. Authenticated with the
+  /// device JWT so the `devices_self_update_heartbeat` RLS policy
+  /// (id = auth.uid()) matches — the anon Supabase client silently updated
+  /// 0 rows.
+  Future<void> registerFcmToken(String deviceId, String token) async {
+    await _dio.patch<dynamic>(
+      '$baseUrl/rest/v1/devices',
+      queryParameters: {'id': 'eq.$deviceId'},
+      data: jsonEncode({'fcm_token': token}),
+      options: Options(
+        headers: {
+          ..._headers,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+      ),
+    );
+  }
+
   /// Sends a heartbeat by calling the `record_heartbeat` Postgres RPC.
   ///
   /// The [deviceId] parameter is kept for backward compatibility with existing

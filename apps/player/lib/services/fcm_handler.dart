@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:player/data/providers.dart';
 import 'package:player/features/lifecycle/application/lifecycle_providers.dart';
 import 'package:player/providers.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class FcmHandler {
   Future<void> registerToken(String token);
@@ -11,10 +11,9 @@ abstract class FcmHandler {
 }
 
 class FcmHandlerImpl implements FcmHandler {
-  FcmHandlerImpl({required this.ref, SupabaseClient? client}) : _client = client;
+  FcmHandlerImpl({required this.ref});
 
   final ProviderContainer ref;
-  final SupabaseClient? _client;
 
   static const _eventsChannel = MethodChannel('app.player/fcm_events');
   static const _commandsChannel = MethodChannel('app.player/fcm');
@@ -45,9 +44,9 @@ class FcmHandlerImpl implements FcmHandler {
       // Will be retried on next pairing complete (PairingScreen calls registerToken too).
       return;
     }
-    final client = _client ?? Supabase.instance.client;
     try {
-      await client.from('devices').update({'fcm_token': token}).eq('id', creds.deviceId);
+      final api = ref.read(syncApiClientProvider(creds));
+      await api.registerFcmToken(creds.deviceId, token);
     } catch (_) {
       // Best-effort. Next refresh will retry. Polling 15min keeps things working anyway.
     }
