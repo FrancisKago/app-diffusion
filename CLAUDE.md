@@ -117,3 +117,10 @@ Les trois items historiques sont **livrés** (mai 2026) — aucune dette report�
 - Suppression gérant → Edge Function `delete-manager` (admin-only, refuse les non-managers, audit `user_deleted`, cascade `auth.users` → `profiles` → `establishment_managers`) + bouton UI gated admin.
 - Realtime devices → `public.devices` dans la publication `supabase_realtime` + `StreamProvider` via `.stream()`. Le polling 30s du back office est retiré.
 - Purge supervision → job pg_cron `purge-supervision-data` quotidien (03:17 UTC). Le `random() < 0.01` est retiré de `record_heartbeat`.
+
+## Hardening fiabilité player (juillet 2026)
+
+- **Lot 1 (player)** : FCM token enregistré via JWT device (l'ancien UPDATE anon matchait 0 ligne RLS → aucun push n'arrivait) ; timeouts réseau sur tous les clients HTTP ; verrou single-flight sur la sync (`SingleFlight`) ; lecture vidéo race-free (garde fin-de-clip + token de transition, `initialize()` avec timeout+skip, spin-loop→standby+retry 30s) ; hash SHA-256 en streaming hors UI (`FileHasher` via `Isolate.run`) ; purge des playlists obsolètes + unassign→standby. Player en **v0.2.0+2**.
+- **Lot 2 (médias obsolètes)** : `MediaRepository.listWithUsage()` (embed PostgREST `playlist_items(playlist_id, playlists(name))`) → badge d'usage par média, filtre « non utilisés », purge en masse ; suppression bloquée avec message clair si média utilisé (FK 23503). Edge Function **`purge-orphan-media`** (admin-only, `dryRun` par défaut) supprime les fichiers du bucket sans ligne `media`. **9 Edge Functions** au total.
+
+⚠️ **Gotcha compte Supabase** : la CLI peut être authentifiée sur un autre compte que celui propriétaire de `app-diffusion` (org `kzjfvodekvxzpccxxtpl`) → `functions deploy`/`db push` renvoient **403**. Vérifier via `supabase orgs list` ; se reconnecter avec `supabase login` au bon compte. Binaire Windows hors PATH PowerShell : `C:\Users\Francis KAGO\bin\supabase.exe`. Ajouter `--use-api` au deploy si Docker est éteint.
