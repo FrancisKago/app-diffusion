@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 
+import 'file_hasher.dart';
 import 'local/app_database.dart';
 import 'local/cache_storage.dart';
 import 'media_downloader.dart';
@@ -127,9 +127,8 @@ class SyncService {
           target: localFile,
         );
 
-        // Verify checksum
-        final bytes = await localFile.readAsBytes();
-        final actualChecksum = sha256.convert(bytes).toString();
+        // Verify checksum (streamed, off the UI isolate)
+        final actualChecksum = await FileHasher.sha256Hex(localFile.path);
         if (actualChecksum != (m['checksum_sha256'] as String)) {
           await localFile.delete();
           throw StateError('Checksum mismatch for media $mediaId');
