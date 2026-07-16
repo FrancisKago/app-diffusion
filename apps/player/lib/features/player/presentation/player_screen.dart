@@ -14,6 +14,7 @@ import 'package:player/features/revoked/presentation/revoked_screen.dart';
 import 'package:player/services/fcm_handler.dart';
 import 'package:player/services/playback_service.dart';
 import 'package:player/services/secure_storage.dart';
+import 'package:player/services/single_flight.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -39,6 +40,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   bool _initialSyncRunning = true;
   String? _syncError;
   bool _revoked = false;
+  final SingleFlight _syncFlight = SingleFlight();
 
   static const Duration _syncInterval = Duration(minutes: 15);
   static const Duration _heartbeatInterval = Duration(minutes: 5);
@@ -80,7 +82,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     unawaited(ref.read(fcmHandlerProvider).registerCurrentToken());
   }
 
-  Future<void> _runSync({bool initial = false}) async {
+  /// Sync entry point. Serialised by [_syncFlight]: the 15-min timer, the
+  /// connectivity listener and FCM pushes can all fire at once — concurrent
+  /// syncs used to download the same file into the same .part and corrupt it.
+  Future<void> _runSync({bool initial = false}) =>
+      _syncFlight.run(() => _doSync(initial: initial));
+
+  Future<void> _doSync({bool initial = false}) async {
     try {
       final svc = ref.read(syncServiceProvider(widget.creds));
       await svc.sync();
