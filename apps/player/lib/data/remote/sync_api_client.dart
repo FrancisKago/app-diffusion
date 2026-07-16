@@ -8,7 +8,16 @@ class SyncApiClient {
     required this.anonKey,
     required this.deviceJwt,
     Dio? dio,
-  }) : _dio = dio ?? Dio();
+  }) : _dio = dio ??
+            Dio(
+              BaseOptions(
+                // Dio defaults to NO timeouts: a stalled connection used to
+                // hang a sync forever (and the initial sync spinner with it).
+                connectTimeout: const Duration(seconds: 15),
+                sendTimeout: const Duration(seconds: 30),
+                receiveTimeout: const Duration(seconds: 30),
+              ),
+            );
 
   final String baseUrl;
   final String anonKey;

@@ -41,9 +41,11 @@ class PairingService {
         'Content-Type': 'application/json',
       };
 
+  static const _timeout = Duration(seconds: 15);
+
   Future<PairingCodeResponse> requestCode() async {
     final uri = Uri.parse('$baseUrl/functions/v1/request-pairing-code');
-    final res = await _client.post(uri, headers: _headers);
+    final res = await _client.post(uri, headers: _headers).timeout(_timeout);
     if (res.statusCode != 200) {
       throw StateError('request-pairing-code failed: ${res.statusCode} ${res.body}');
     }
@@ -59,7 +61,7 @@ class PairingService {
     final uri = Uri.parse(
       '$baseUrl/functions/v1/pairing-status?session_id=$sessionId',
     );
-    final res = await _client.get(uri, headers: _headers);
+    final res = await _client.get(uri, headers: _headers).timeout(_timeout);
     if (res.statusCode != 200) {
       throw StateError('pairing-status failed: ${res.statusCode} ${res.body}');
     }

@@ -11,7 +11,18 @@ import 'package:dio/dio.dart';
 /// On any error, the `.part` file is left in place — the next call will
 /// resume from where it left off.
 class MediaDownloader {
-  MediaDownloader({Dio? dio}) : _dio = dio ?? Dio();
+  MediaDownloader({Dio? dio})
+      : _dio = dio ??
+            Dio(
+              BaseOptions(
+                connectTimeout: const Duration(seconds: 15),
+                // For streamed responses dio applies receiveTimeout between
+                // data events, i.e. an inactivity timeout — a stalled
+                // download aborts instead of hanging forever with the .part
+                // file held open.
+                receiveTimeout: const Duration(seconds: 30),
+              ),
+            );
 
   final Dio _dio;
 
