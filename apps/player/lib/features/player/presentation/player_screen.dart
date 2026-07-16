@@ -105,6 +105,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           _syncError = null;
         });
         ref.read(lastSyncOkProvider.notifier).state = DateTime.now();
+        ref.read(lastSyncErrorProvider.notifier).state = null;
+        ref.invalidate(playerDiagnosticsProvider);
         await _refreshActiveItems();
       }
     } catch (e) {
@@ -114,6 +116,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           _syncError = e.toString();
           if (_isRevocationError(e)) _revoked = true;
         });
+        ref.read(lastSyncErrorProvider.notifier).state = e.toString();
+        ref.invalidate(playerDiagnosticsProvider);
         // First playback can still happen from cache if we have one
         if (initial && !_revoked) {
           await _refreshActiveItems();
