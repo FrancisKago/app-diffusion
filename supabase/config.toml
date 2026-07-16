@@ -378,6 +378,9 @@ verify_jwt = false
 [functions.delete-manager]
 verify_jwt = false
 
+[functions.purge-orphan-media]
+verify_jwt = false
+
 [functions.request-pairing-code]
 verify_jwt = false
 

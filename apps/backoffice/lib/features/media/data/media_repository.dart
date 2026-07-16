@@ -192,6 +192,32 @@ class MediaRepository {
       throw AppException('URL signée échouée', cause: e.message);
     }
   }
+
+  /// Purges storage objects with no matching media row (admin only, via Edge
+  /// Function). With [dryRun] true, only counts them. Returns
+  /// (orphanCount, deleted).
+  Future<({int orphanCount, int deleted})> purgeOrphanStorage({
+    bool dryRun = true,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'purge-orphan-media',
+        body: {'dryRun': dryRun},
+      );
+      if (response.status >= 400) {
+        final data = response.data;
+        final err = (data is Map) ? data['error'] : data;
+        throw AppException('Purge stockage échouée', cause: err);
+      }
+      final data = Map<String, dynamic>.from(response.data as Map);
+      return (
+        orphanCount: (data['orphanCount'] as num?)?.toInt() ?? 0,
+        deleted: (data['deleted'] as num?)?.toInt() ?? 0,
+      );
+    } on FunctionException catch (e) {
+      throw AppException('Purge stockage échouée', cause: e.details);
+    }
+  }
 }
 
 String _extensionFor(String mimeType) => switch (mimeType) {

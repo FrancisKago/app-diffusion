@@ -26,6 +26,12 @@ class MediaLibraryScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Médias'),
         actions: [
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.cleaning_services_outlined),
+              tooltip: 'Purger le stockage orphelin',
+              onPressed: () => _purgeOrphanStorage(context, ref),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(mediaWithUsageListProvider),
@@ -387,6 +393,64 @@ Future<void> _confirmPurgeUnused(
     ref.invalidate(mediaWithUsageListProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
+  }
+}
+
+/// Two-step orphan-storage purge: a dry run counts leftover files, then the
+/// admin confirms actual deletion.
+Future<void> _purgeOrphanStorage(BuildContext context, WidgetRef ref) async {
+  final repo = ref.read(mediaRepositoryProvider);
+  final messenger = ScaffoldMessenger.of(context);
+  ({int orphanCount, int deleted}) scan;
+  try {
+    scan = await repo.purgeOrphanStorage(dryRun: true);
+  } on AppException catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('${e.message} — ${e.cause}')),
+    );
+    return;
+  }
+  if (scan.orphanCount == 0) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Aucun fichier orphelin dans le stockage.')),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Purger le stockage orphelin ?'),
+      content: Text(
+        '${scan.orphanCount} fichier(s) présents dans le stockage ne '
+        'correspondent à aucun média (restes de suppressions). Les '
+        'supprimer définitivement ?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Purger'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    final res = await repo.purgeOrphanStorage(dryRun: false);
+    messenger.showSnackBar(
+      SnackBar(content: Text('${res.deleted} fichier(s) orphelin(s) purgé(s).')),
+    );
+  } on AppException catch (e) {
+    messenger.showSnackBar(
       SnackBar(content: Text('${e.message} — ${e.cause}')),
     );
   }
