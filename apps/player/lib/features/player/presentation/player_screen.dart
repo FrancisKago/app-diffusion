@@ -37,6 +37,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   CachedMediaData? _currentMedia;
   List<CachedPlaylistItem> _activeItems = const [];
   int _activeIndex = 0;
+
+  /// Bumped on every playback transition; stale async transitions abort at
+  /// their next checkpoint instead of racing (double controllers used to
+  /// leak native players when the end-listener fired more than once).
+  int _playToken = 0;
+  int _consecutiveSkips = 0;
+  Timer? _retryTimer;
   bool _initialSyncRunning = true;
   String? _syncError;
   bool _revoked = false;
@@ -176,6 +183,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     setState(() {
       _activeItems = active;
       _activeIndex = _activeIndex >= active.length ? 0 : _activeIndex;
+      _consecutiveSkips = 0;
     });
     if (active.isEmpty) {
       await _stopCurrent();
@@ -185,6 +193,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   Future<void> _stopCurrent() async {
+    _playToken++; // abort any in-flight transition
     _imageTimer?.cancel();
     _imageTimer = null;
     await _videoController?.dispose();
@@ -198,27 +207,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   Future<void> _playAt(int index) async {
-    if (_activeItems.isEmpty) return;
+    if (_activeItems.isEmpty || !mounted) return;
+    final token = ++_playToken;
     final wrapped = index % _activeItems.length;
     final item = _activeItems[wrapped];
     final db = ref.read(appDatabaseProvider);
     final media = await db.getMedia(item.mediaId);
+    if (token != _playToken || !mounted) return;
+
     if (media == null ||
         media.localPath == null ||
         !File(media.localPath!).existsSync()) {
-      // Skip to next
-      if (!mounted) return;
-      setState(() => _activeIndex = wrapped + 1);
-      unawaited(Future.microtask(() => _playAt(_activeIndex)));
+      _skipToNext(wrapped);
       return;
     }
     await db.touchMedia(media.id);
+    if (token != _playToken || !mounted) return;
 
-    await _videoController?.dispose();
-    _videoController = null;
+    // Tear down the previous item before creating the next controller (one
+    // native decoder alive at a time).
     _imageTimer?.cancel();
+    final previous = _videoController;
+    _videoController = null;
+    if (previous != null) await previous.dispose();
+    if (token != _playToken || !mounted) return;
 
-    if (!mounted) return;
     setState(() {
       _currentItem = item;
       _currentMedia = media;
@@ -227,22 +240,64 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
     if (media.type == 'video') {
       final controller = VideoPlayerController.file(File(media.localPath!));
-      await controller.initialize();
-      await controller.setLooping(false);
-      await controller.play();
+      try {
+        await controller.initialize().timeout(const Duration(seconds: 20));
+        await controller.setLooping(false);
+        await controller.play();
+      } catch (_) {
+        // Corrupt/undecodable file or stuck decoder: never leave the screen
+        // frozen on this item — dispose and skip.
+        await controller.dispose();
+        if (token != _playToken || !mounted) return;
+        _skipToNext(wrapped);
+        return;
+      }
+      if (token != _playToken || !mounted) {
+        await controller.dispose();
+        return;
+      }
+      var advanced = false;
       controller.addListener(() {
+        if (advanced) return;
         final v = controller.value;
-        if (v.position >= v.duration && v.duration > Duration.zero) {
+        final ended = v.isCompleted ||
+            (v.duration > Duration.zero && v.position >= v.duration);
+        if (ended) {
+          // Position keeps ticking at the end: without this guard the
+          // listener fired several times and spawned racing transitions.
+          advanced = true;
           _onItemEnded();
         }
       });
-      if (mounted) setState(() => _videoController = controller);
+      setState(() => _videoController = controller);
+      _consecutiveSkips = 0;
     } else {
       _imageTimer = Timer(
         Duration(seconds: item.displayDurationSec),
         _onItemEnded,
       );
+      _consecutiveSkips = 0;
     }
+  }
+
+  /// Advances past an unplayable item. After a full cycle with nothing
+  /// playable, stops spinning (the old code busy-looped on the DB forever),
+  /// shows standby and retries in 30s — by then a sync may have re-downloaded
+  /// the missing files.
+  void _skipToNext(int wrapped) {
+    _consecutiveSkips++;
+    if (_consecutiveSkips >= _activeItems.length) {
+      _consecutiveSkips = 0;
+      unawaited(_stopCurrent());
+      _retryTimer?.cancel();
+      _retryTimer = Timer(const Duration(seconds: 30), () {
+        if (mounted && _currentItem == null) _playAt(_activeIndex);
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _activeIndex = wrapped + 1);
+    unawaited(Future.microtask(() => _playAt(_activeIndex)));
   }
 
   void _onItemEnded() {
@@ -273,6 +328,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     _syncTimer?.cancel();
     _heartbeatTimer?.cancel();
     _imageTimer?.cancel();
+    _retryTimer?.cancel();
     _connSub?.cancel();
     _videoController?.dispose();
     WidgetsBinding.instance.removeObserver(this);
